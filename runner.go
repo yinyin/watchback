@@ -62,6 +62,15 @@ func (r callableBundleRunner) AddCallableWithContext(callable callableFunc, ctx 
 	}
 }
 
+func (r callableBundleRunner) AddCallableWithTimeout(callable callableFunc, timeout time.Duration) (retCh <-chan error, cancel context.CancelFunc, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	if retCh, err = r.AddCallableWithContext(callable, ctx); nil != err {
+		cancel()
+		cancel = nil
+	}
+	return retCh, cancel, err
+}
+
 func (r callableBundleRunner) Close() {
 	close(r)
 }
