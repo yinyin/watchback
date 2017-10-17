@@ -11,6 +11,8 @@ import (
 var ErrBundleQueueFulled = errors.New("callable bundle queue is fulled")
 var ErrCallableTimeout = errors.New("context of callable done before callable complete")
 
+const ExpiredCallableResultCollectPeriod = time.Second * 3
+
 type callableFunc func(ctx context.Context) (err error)
 
 type callableBundle struct {
@@ -87,7 +89,7 @@ func (r callableBundleRunner) RunLoop() {
 			select {
 			case err, ok := <-ch:
 				bundle.setErrorState(err, ok)
-			case <-time.After(time.Second * 3):
+			case <-time.After(ExpiredCallableResultCollectPeriod):
 				bundle.setErrorState(ErrCallableTimeout, true)
 			}
 		}

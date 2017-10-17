@@ -141,7 +141,7 @@ func validate_IsOnService(t *testing.T, n * WorkerNode, t0 time.Time, stepName s
 
 func TestWorkerNode_IsOnService_c1a(t *testing.T) {
 	mock := newMockNodeMessagingAdapter_C1()
-	n := newWorkerNode(3, mock, time.Second*(maxNodeMessagingOperationAttempt*4+1), time.Second, time.Second)
+	n := newWorkerNode(3, mock, time.Second+(maxNodeMessagingOperationAttempt*(ExpiredCallableResultCollectPeriod+time.Second)), time.Second, time.Second)
 	go n.RunMessagingLoop()
 	defer n.Close()
 	t0 := time.Now()
