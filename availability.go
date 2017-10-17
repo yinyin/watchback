@@ -36,6 +36,12 @@ func (a * availabilityLogic) Reset() {
 	atomic.StoreInt64(&a.blackoutUntil, 0)
 }
 
+func (a * availabilityLogic) ResetWithAvailableWithin(d time.Duration) {
+	t := time.Now().Add(d).UnixNano()
+	atomic.StoreInt64(&a.availableUntil, t)
+	atomic.StoreInt64(&a.blackoutUntil, 0)
+}
+
 func (a * availabilityLogic) AvailableWithin(d time.Duration) {
 	extendTimeBoundary(d, &a.availableUntil)
 }

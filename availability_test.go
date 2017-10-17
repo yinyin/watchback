@@ -72,3 +72,23 @@ func TestAvailabilityLogic_Reset(t *testing.T) {
 		t.Errorf("expect logic available (reset, available-within).")
 	}
 }
+
+func TestAvailabilityLogic_ResetWithAvailableWithin(t *testing.T) {
+	l := newAvailabilityLogic()
+	if l.Availability() {
+		t.Errorf("expect logic not available (new).")
+	}
+	l.AvailableWithin(time.Second * 5)
+	l.BlackoutWithin(time.Second * 3)
+	if l.Availability() {
+		t.Errorf("expect logic not available (reset).")
+	}
+	l.ResetWithAvailableWithin(time.Second * 1)
+	if !l.Availability() {
+		t.Errorf("expect logic available (reset-with-available-within).")
+	}
+	time.Sleep(time.Second * 2)
+	if l.Availability() {
+		t.Errorf("expect logic not available (expired).")
+	}
+}
