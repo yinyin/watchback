@@ -11,13 +11,15 @@ import (
 var ErrBundleQueueFulled = errors.New("callable bundle queue is fulled")
 var ErrCallableTimeout = errors.New("context of callable done before callable complete")
 
+type callableFunc func(ctx context.Context) (err error)
+
 type callableBundle struct {
-	callable    func(ctx context.Context) (err error)
+	callable    callableFunc
 	ctx         context.Context
 	resultStore chan error
 }
 
-func newCallableBundle(callable func(ctx context.Context) (err error), ctx context.Context) (bundle *callableBundle) {
+func newCallableBundle(callable callableFunc, ctx context.Context) (bundle *callableBundle) {
 	return &callableBundle{
 		callable:    callable,
 		ctx:         ctx,
@@ -50,7 +52,7 @@ func (r callableBundleRunner) runCallable(ch chan<- error, bundle *callableBundl
 	close(ch)
 }
 
-func (r callableBundleRunner) AddCallableWithContext(callable func(ctx context.Context) (err error), ctx context.Context) (retCh <-chan error, err error) {
+func (r callableBundleRunner) AddCallableWithContext(callable callableFunc, ctx context.Context) (retCh <-chan error, err error) {
 	bundle := newCallableBundle(callable, ctx)
 	select {
 	case r <- bundle:
