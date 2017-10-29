@@ -3,6 +3,7 @@ package watchback
 import (
 	"testing"
 	"context"
+	"time"
 )
 
 // Mock NodeMessang
@@ -10,16 +11,19 @@ type mockNodeMessagerNoop struct {
 	nodeId int32
 }
 
-func (m * mockNodeMessagerNoop) Close(ctx context.Context) (err error) {
-	return nil
+func (m * mockNodeMessagerNoop) HasMessagingFailure(err error) {
 }
 
-func (m * mockNodeMessagerNoop) CheckStatusNormal(ctx context.Context) (isNormal bool, err error) {
-	return true, nil
+func (m * mockNodeMessagerNoop) IsOnService(ctx context.Context) (onService bool, err error) {
+	return false, nil
 }
 
 func (m * mockNodeMessagerNoop) RequestServiceActivationApproval(ctx context.Context) (isApproved bool, err error) {
 	return true, nil
+}
+
+func (m * mockNodeMessagerNoop) Close(ctx context.Context) (err error) {
+	return nil
 }
 
 func newMockNodeMessagerNoop(nodeId int32) (m * mockNodeMessagerNoop) {
@@ -74,16 +78,17 @@ func validate_ServiceRack_nodeCount(t *testing.T, serviceRack * ServiceRack, fro
 }
 
 func TestServiceRack_AddNode_1normal(t *testing.T) {
-	serviceRack := newServiceRack(2)
-	node1, err1 := serviceRack.AddNode(1, newMockNodeMessagerNoop(1))
+	serviceRack := newServiceRack(2, nil,
+		time.Second, time.Second, time.Second, time.Second, time.Second, time.Second)
+	node1, err1 := serviceRack.AddNode(1, newMockNodeMessagerNoop(1), 0, 0, 0)
 	validate_ServiceRack_AddNode_result(t, 1, false, node1, err1)
-	node2, err2 := serviceRack.AddNode(2, newMockNodeMessagerNoop(2))
+	node2, err2 := serviceRack.AddNode(2, newMockNodeMessagerNoop(2), 0, 0, 0)
 	validate_ServiceRack_AddNode_result(t, -1, false, node2, err2)
-	node3, err3 := serviceRack.AddNode(3, newMockNodeMessagerNoop(3))
+	node3, err3 := serviceRack.AddNode(3, newMockNodeMessagerNoop(3), 0, 0, 0)
 	validate_ServiceRack_AddNode_result(t, 3, false, node3, err3)
-	node3dup, err3dup := serviceRack.AddNode(3, newMockNodeMessagerNoop(3))
+	node3dup, err3dup := serviceRack.AddNode(3, newMockNodeMessagerNoop(3), 0, 0, 0)
 	validate_ServiceRack_AddNode_result(t, -1, true, node3dup, err3dup)
-	node2dup, err2dup := serviceRack.AddNode(2, newMockNodeMessagerNoop(2))
+	node2dup, err2dup := serviceRack.AddNode(2, newMockNodeMessagerNoop(2), 0, 0, 0)
 	validate_ServiceRack_AddNode_result(t, -1, true, node2dup, err2dup)
 	// check state of ServiceRack
 	validate_ServiceRack_nodeCount(t, serviceRack, 1, 2)
