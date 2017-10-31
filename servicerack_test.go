@@ -77,9 +77,115 @@ func validate_ServiceRack_nodeCount(t *testing.T, serviceRack * ServiceRack, fro
 	}
 }
 
+func newDefaultServiceTimingConfigForTest_1() (cfg * ServiceTimingConfig) {
+	return &ServiceTimingConfig {
+		AcceptablePreparePeriod: time.Second,
+		AcceptableOnServiceSelfCheckPeriod: time.Second,
+		AcceptableOffServiceSelfCheckPeriod: time.Second,
+		AcceptableServiceActivationPeriod: time.Second,
+		AcceptableServiceReleasingPeriod   : time.Second,
+
+		AcceptableOnServiceSelfCheckFailurePeriod  : time.Second,
+		AcceptableOffServiceSelfCheckFailurePeriod : time.Second,
+		AcceptableFrontNodeEmptyPeriod             : time.Second,
+
+		OnServiceSelfCheckPeriod  : time.Second,
+		OffServiceSelfCheckPeriod : time.Second,
+
+		ServiceActivationFailureBlackoutPeriod : time.Second,
+		ServiceReleaseSuccessBlackoutPeriod    : time.Second,
+		ServiceReleaseFailureBlackoutPeriod: time.Second,
+	}
+}
+
+func newDefaultServiceTimingConfigForTest_2() (cfg * ServiceTimingConfig) {
+	return &ServiceTimingConfig {
+		AcceptablePreparePeriod: time.Second * 3,
+		AcceptableOnServiceSelfCheckPeriod: time.Second * 4,
+		AcceptableOffServiceSelfCheckPeriod: time.Second * 5,
+		AcceptableServiceActivationPeriod: time.Second * 5,
+		AcceptableServiceReleasingPeriod   : time.Second * 7,
+
+		AcceptableOnServiceSelfCheckFailurePeriod  : time.Second * 8,
+		AcceptableOffServiceSelfCheckFailurePeriod : time.Second * 9,
+		AcceptableFrontNodeEmptyPeriod             : time.Second * 10,
+
+		OnServiceSelfCheckPeriod  : time.Second * 11,
+		OffServiceSelfCheckPeriod : time.Second * 12,
+
+		ServiceActivationFailureBlackoutPeriod : time.Second * 13,
+		ServiceReleaseSuccessBlackoutPeriod    : time.Second * 14,
+		ServiceReleaseFailureBlackoutPeriod: time.Second * 15,
+	}
+}
+
+func validate_SameServiceTimingConfigContent(t *testing.T, cfg1 * ServiceTimingConfig, cfg2 * ServiceTimingConfig) {
+	if cfg1.AcceptablePreparePeriod != cfg2.AcceptablePreparePeriod {
+		t.Errorf("configuration value for AcceptablePreparePeriod is different: %v vs. %v",
+			cfg1.AcceptablePreparePeriod, cfg2.AcceptablePreparePeriod)
+	}
+	if cfg1.AcceptableOnServiceSelfCheckPeriod != cfg2.AcceptableOnServiceSelfCheckPeriod {
+		t.Errorf("configuration value for AcceptableOnServiceSelfCheckPeriod is different: %v vs. %v",
+			cfg1.AcceptableOnServiceSelfCheckPeriod, cfg2.AcceptableOnServiceSelfCheckPeriod)
+	}
+	if cfg1.AcceptableOffServiceSelfCheckPeriod != cfg2.AcceptableOffServiceSelfCheckPeriod {
+		t.Errorf("configuration value for AcceptableOffServiceSelfCheckPeriod is different: %v vs. %v",
+			cfg1.AcceptableOffServiceSelfCheckPeriod, cfg2.AcceptableOffServiceSelfCheckPeriod)
+	}
+	if cfg1.AcceptableServiceActivationPeriod != cfg2.AcceptableServiceActivationPeriod {
+		t.Errorf("configuration value for AcceptableServiceActivationPeriod is different: %v vs. %v",
+			cfg1.AcceptableServiceActivationPeriod, cfg2.AcceptableServiceActivationPeriod)
+	}
+	if cfg1.AcceptableServiceReleasingPeriod != cfg2.AcceptableServiceReleasingPeriod {
+		t.Errorf("configuration value for AcceptableServiceReleasingPeriod is different: %v vs. %v",
+			cfg1.AcceptableServiceReleasingPeriod, cfg2.AcceptableServiceReleasingPeriod)
+	}
+
+	if cfg1.AcceptableOnServiceSelfCheckFailurePeriod != cfg2.AcceptableOnServiceSelfCheckFailurePeriod {
+		t.Errorf("configuration value for AcceptableOnServiceSelfCheckFailurePeriod is different: %v vs. %v",
+			cfg1.AcceptableOnServiceSelfCheckFailurePeriod, cfg2.AcceptableOnServiceSelfCheckFailurePeriod)
+	}
+	if cfg1.AcceptableOffServiceSelfCheckFailurePeriod != cfg2.AcceptableOffServiceSelfCheckFailurePeriod {
+		t.Errorf("configuration value for AcceptableOffServiceSelfCheckFailurePeriod is different: %v vs. %v",
+			cfg1.AcceptableOffServiceSelfCheckFailurePeriod, cfg2.AcceptableOffServiceSelfCheckFailurePeriod)
+	}
+	if cfg1.AcceptableFrontNodeEmptyPeriod != cfg2.AcceptableFrontNodeEmptyPeriod {
+		t.Errorf("configuration value for AcceptableFrontNodeEmptyPeriod is different: %v vs. %v",
+			cfg1.AcceptableFrontNodeEmptyPeriod, cfg2.AcceptableFrontNodeEmptyPeriod)
+	}
+
+	if cfg1.OnServiceSelfCheckPeriod != cfg2.OnServiceSelfCheckPeriod {
+		t.Errorf("configuration value for OnServiceSelfCheckPeriod is different: %v vs. %v",
+			cfg1.OnServiceSelfCheckPeriod, cfg2.OnServiceSelfCheckPeriod)
+	}
+	if cfg1.OffServiceSelfCheckPeriod != cfg2.OffServiceSelfCheckPeriod {
+		t.Errorf("configuration value for OffServiceSelfCheckPeriod is different: %v vs. %v",
+			cfg1.OffServiceSelfCheckPeriod, cfg2.OffServiceSelfCheckPeriod)
+	}
+
+	if cfg1.ServiceActivationFailureBlackoutPeriod  != cfg2.ServiceActivationFailureBlackoutPeriod {
+		t.Errorf("configuration value for ServiceActivationFailureBlackoutPeriod is different: %v vs. %v",
+			cfg1.ServiceActivationFailureBlackoutPeriod, cfg2.ServiceActivationFailureBlackoutPeriod)
+	}
+	if cfg1.ServiceReleaseSuccessBlackoutPeriod != cfg2.ServiceReleaseSuccessBlackoutPeriod {
+		t.Errorf("configuration value for ServiceReleaseSuccessBlackoutPeriod is different: %v vs. %v",
+			cfg1.ServiceReleaseSuccessBlackoutPeriod, cfg2.ServiceReleaseSuccessBlackoutPeriod)
+	}
+	if cfg1.ServiceReleaseFailureBlackoutPeriod != cfg2.ServiceReleaseFailureBlackoutPeriod {
+		t.Errorf("configuration value for ServiceReleaseFailureBlackoutPeriod is different: %v vs. %v",
+			cfg1.ServiceReleaseFailureBlackoutPeriod, cfg2.ServiceReleaseFailureBlackoutPeriod)
+	}
+}
+
+func TestServiceTimingConfig_CopyFrom(t *testing.T) {
+	var cfg1 ServiceTimingConfig
+	cfg2 := newDefaultServiceTimingConfigForTest_2()
+	cfg1.copyFrom(cfg2)
+	validate_SameServiceTimingConfigContent(t, &cfg1, cfg2)
+}
+
 func TestServiceRack_AddNode_1normal(t *testing.T) {
-	serviceRack := newServiceRack(2, nil,
-		time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second)
+	serviceRack := newServiceRack(2, nil, newDefaultServiceTimingConfigForTest_1())
 	node1, err1 := serviceRack.AddNode(1, newMockNodeMessagerNoop(1), 0, 0, 0, 0)
 	validate_ServiceRack_AddNode_result(t, 1, false, node1, err1)
 	node2, err2 := serviceRack.AddNode(2, newMockNodeMessagerNoop(2), 0, 0, 0, 0)
@@ -126,8 +232,7 @@ func demux_MockingRequestServiceActivationApprovalFactors(factorCode int32) (fro
 }
 
 func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
-	serviceRack := newServiceRack(2, nil,
-		time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second)
+	serviceRack := newServiceRack(2, nil,newDefaultServiceTimingConfigForTest_1())
 	var i int32
 	for i =1; i < 4; i++ {
 		serviceRack.AddNode(i, newMockNodeMessagerNoop(i), 0, 0, 0, 0)

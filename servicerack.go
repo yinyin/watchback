@@ -10,6 +10,44 @@ import (
 
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
 
+type ServiceTimingConfig struct {
+	AcceptablePreparePeriod             time.Duration
+	AcceptableOnServiceSelfCheckPeriod  time.Duration
+	AcceptableOffServiceSelfCheckPeriod time.Duration
+	AcceptableServiceActivationPeriod   time.Duration
+	AcceptableServiceReleasingPeriod    time.Duration
+
+	AcceptableOnServiceSelfCheckFailurePeriod  time.Duration
+	AcceptableOffServiceSelfCheckFailurePeriod time.Duration
+	AcceptableFrontNodeEmptyPeriod             time.Duration
+
+	OnServiceSelfCheckPeriod  time.Duration
+	OffServiceSelfCheckPeriod time.Duration
+
+	ServiceActivationFailureBlackoutPeriod time.Duration
+	ServiceReleaseSuccessBlackoutPeriod    time.Duration
+	ServiceReleaseFailureBlackoutPeriod    time.Duration
+}
+
+func (c * ServiceTimingConfig) copyFrom(other * ServiceTimingConfig) {
+	c.AcceptablePreparePeriod = other.AcceptablePreparePeriod
+	c.AcceptableOnServiceSelfCheckPeriod = other.AcceptableOnServiceSelfCheckPeriod
+	c.AcceptableOffServiceSelfCheckPeriod = other.AcceptableOffServiceSelfCheckPeriod
+	c.AcceptableServiceActivationPeriod = other.AcceptableServiceActivationPeriod
+	c.AcceptableServiceReleasingPeriod = other.AcceptableServiceReleasingPeriod
+
+	c.AcceptableOnServiceSelfCheckFailurePeriod = other.AcceptableOnServiceSelfCheckFailurePeriod
+	c.AcceptableOffServiceSelfCheckFailurePeriod = other.AcceptableOffServiceSelfCheckFailurePeriod
+	c.AcceptableFrontNodeEmptyPeriod = other.AcceptableFrontNodeEmptyPeriod
+
+	c.OnServiceSelfCheckPeriod = other.OnServiceSelfCheckPeriod
+	c.OffServiceSelfCheckPeriod = other.OffServiceSelfCheckPeriod
+
+	c.ServiceActivationFailureBlackoutPeriod = other.ServiceActivationFailureBlackoutPeriod
+	c.ServiceReleaseSuccessBlackoutPeriod = other.ServiceReleaseSuccessBlackoutPeriod
+	c.ServiceReleaseFailureBlackoutPeriod = other.ServiceReleaseFailureBlackoutPeriod
+}
+
 type ServiceRack struct {
 	localNodeId int32
 	serviceController ServiceControlAdapter
@@ -30,30 +68,10 @@ type ServiceRack struct {
 	lastSelfCheckAt time.Time
 	lastSelfCheckResult error
 
-	acceptablePreparePeriod time.Duration
-	acceptableOnServiceSelfCheckPeriod time.Duration
-	acceptableOffServiceSelfCheckPeriod time.Duration
-	acceptableServiceActivationPeriod time.Duration
-	acceptableServiceReleasingPeriod time.Duration
-
-	acceptableOnServiceSelfCheckFailurePeriod time.Duration
-	acceptableOffServiceSelfCheckFailurePeriod time.Duration
-	acceptableFrontNodeEmptyPeriod time.Duration
-
-	onServiceSelfCheckPeriod time.Duration
-	offServiceSelfCheckPeriod time.Duration
-
-	serviceActivationFailureBlackoutPeriod time.Duration
-	serviceReleaseSuccessBlackoutPeriod time.Duration
-	serviceReleaseFailureBlackoutPeriod time.Duration
+	timingConfig ServiceTimingConfig
 }
 
-func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter,
-	acceptablePreparePeriod, acceptableOnServiceSelfCheckPeriod, acceptableOffServiceSelfCheckPeriod,
-		acceptableServiceActivationPeriod, acceptableServiceReleasingPeriod,
-	acceptableOnServiceSelfCheckFailurePeriod, acceptableOffServiceSelfCheckFailurePeriod, acceptableFrontNodeEmptyPeriod,
-		onServiceSelfCheckPeriod, offServiceSelfCheckPeriod,
-		serviceActivationFailureBlackoutPeriod, serviceReleaseSuccessBlackoutPeriod, serviceReleaseFailureBlackoutPeriod time.Duration) (serviceRack * ServiceRack) {
+func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter, timingConfig * ServiceTimingConfig) (serviceRack * ServiceRack) {
 	serviceRack = &ServiceRack {
 		localNodeId: localNodeId,
 		serviceController: serviceController,
@@ -65,22 +83,10 @@ func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter,
 		stateTransit: newStateTransporter(),
 		anyFrontNodeAvailable: newAvailabilityLogic(),
 		lastSelfCheckResult: nil,
-		acceptablePreparePeriod: acceptablePreparePeriod,
-		acceptableOnServiceSelfCheckPeriod: acceptableOnServiceSelfCheckPeriod,
-		acceptableOffServiceSelfCheckPeriod: acceptableOffServiceSelfCheckPeriod,
-		acceptableServiceActivationPeriod: acceptableServiceActivationPeriod,
-		acceptableServiceReleasingPeriod: acceptableServiceReleasingPeriod,
-		acceptableOnServiceSelfCheckFailurePeriod: acceptableOnServiceSelfCheckFailurePeriod,
-		acceptableOffServiceSelfCheckFailurePeriod: acceptableOffServiceSelfCheckFailurePeriod,
-		acceptableFrontNodeEmptyPeriod: acceptableFrontNodeEmptyPeriod,
-		onServiceSelfCheckPeriod: onServiceSelfCheckPeriod,
-		offServiceSelfCheckPeriod: offServiceSelfCheckPeriod,
-		serviceActivationFailureBlackoutPeriod: serviceActivationFailureBlackoutPeriod,
-		serviceReleaseSuccessBlackoutPeriod: serviceReleaseSuccessBlackoutPeriod,
-		serviceReleaseFailureBlackoutPeriod: serviceReleaseFailureBlackoutPeriod,
 	}
 	serviceRack.serviceActivating.Store(false)
 	serviceRack.servicing.Store(false)
+	serviceRack.timingConfig.copyFrom(timingConfig)
 	return serviceRack
 }
 
@@ -133,11 +139,11 @@ func (x * ServiceRack) durationToNextSelfCheck(d time.Duration) (result time.Dur
 }
 
 func (x * ServiceRack) durationToNextOnServiceSelfCheck() (result time.Duration) {
-	return x.durationToNextSelfCheck(x.onServiceSelfCheckPeriod)
+	return x.durationToNextSelfCheck(x.timingConfig.OnServiceSelfCheckPeriod)
 }
 
 func (x * ServiceRack) durationToNextOffServiceSelfCheck() (result time.Duration) {
-	return x.durationToNextSelfCheck(x.offServiceSelfCheckPeriod)
+	return x.durationToNextSelfCheck(x.timingConfig.OffServiceSelfCheckPeriod)
 }
 
 func (x * ServiceRack) isFrontNodeId(nodeId int32) (found bool) {
@@ -156,7 +162,7 @@ func (x * ServiceRack) checkFrontNode() (err error) {
 			log.Printf("WARN: caught err on request IsOnService() on node: (id=%v)", node.nodeId)
 		}
 		if true == onService {
-			x.anyFrontNodeAvailable.AvailableWithin(x.acceptableFrontNodeEmptyPeriod)
+			x.anyFrontNodeAvailable.AvailableWithin(x.timingConfig.AcceptableFrontNodeEmptyPeriod)
 			return nil
 		}
 	}
@@ -181,7 +187,7 @@ func (x * ServiceRack) runPrepare() (err error) {
 		log.Printf("WARN: empty service controller (runPrepare)")
 		return nil
 	}
-	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.Prepare, x.acceptablePreparePeriod)
+	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.Prepare, x.timingConfig.AcceptablePreparePeriod)
 	if nil != err {
 		return err
 	}
@@ -199,14 +205,14 @@ func (x * ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invoke
 		log.Printf("WARN: empty service controller (runOnServiceSelfCheck)")
 		return nil, 0	// TODO: impl
 	}
-	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.OnServiceSelfCheck, x.acceptableOnServiceSelfCheckPeriod)
+	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.OnServiceSelfCheck, x.timingConfig.AcceptableOnServiceSelfCheckPeriod)
 	if nil != err {
 		log.Printf("ERR: failed on invoke OnServiceSelfCheck: %v", err)
 	} else {
 		defer cancel()
 		err = <-c
 		if nil == err {
-			x.availability.AvailableWithin(x.acceptableOnServiceSelfCheckFailurePeriod)
+			x.availability.AvailableWithin(x.timingConfig.AcceptableOnServiceSelfCheckFailurePeriod)
 		}
 	}
 	x.lastSelfCheckResult = err
@@ -219,14 +225,14 @@ func (x * ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invok
 		log.Printf("WARN: empty service controller (runOffServiceSelfCheck)")
 		return nil, 0	// TODO: impl
 	}
-	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.OffServiceSelfCheck, x.acceptableOffServiceSelfCheckPeriod)
+	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.OffServiceSelfCheck, x.timingConfig.AcceptableOffServiceSelfCheckPeriod)
 	if nil != err {
 		log.Printf("ERR: failed on invoke OffServiceSelfCheck: %v", err)
 	} else {
 		defer cancel()
 		err = <-c
 		if nil == err {
-			x.availability.AvailableWithin(x.acceptableOffServiceSelfCheckFailurePeriod)
+			x.availability.AvailableWithin(x.timingConfig.AcceptableOffServiceSelfCheckFailurePeriod)
 		}
 	}
 	x.lastSelfCheckResult = err
@@ -257,7 +263,7 @@ func (x * ServiceRack) runServiceActivation() (nextHandler stateHandler, invokeA
 		log.Printf("WARN: empty service controller (runServiceActivation)")
 		return nil, 0	// TODO: impl
 	}
-	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.ActivateService, x.acceptableServiceActivationPeriod)
+	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.ActivateService, x.timingConfig.AcceptableServiceActivationPeriod)
 	if nil != err {
 		log.Printf("ERR: failed on invoke ActivateService: %v", err)
 	} else {
@@ -265,10 +271,10 @@ func (x * ServiceRack) runServiceActivation() (nextHandler stateHandler, invokeA
 		err = <-c
 		if nil == err {
 			x.servicing.Store(true)
-			x.availability.AvailableWithin(x.acceptableOnServiceSelfCheckFailurePeriod)
+			x.availability.AvailableWithin(x.timingConfig.AcceptableOnServiceSelfCheckFailurePeriod)
 			return x.runOnServiceSelfCheck, x.durationToNextOnServiceSelfCheck()
 		} else {
-			x.availability.BlackoutWithin(x.serviceActivationFailureBlackoutPeriod)
+			x.availability.BlackoutWithin(x.timingConfig.ServiceActivationFailureBlackoutPeriod)
 			log.Printf("WARN: failed on activating service: %v", err)
 		}
 	}
@@ -281,17 +287,17 @@ func (x * ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfte
 		x.servicing.Store(false)
 		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
 	}
-	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.ReleaseService, x.acceptableServiceReleasingPeriod)
+	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.ReleaseService, x.timingConfig.AcceptableServiceReleasingPeriod)
 	if nil != err {
 		log.Printf("ERR: failed on invoke ReleaseService: %v", err)
-		x.availability.BlackoutWithin(x.serviceReleaseFailureBlackoutPeriod)
+		x.availability.BlackoutWithin(x.timingConfig.ServiceReleaseFailureBlackoutPeriod)
 	} else {
 		defer cancel()
 		err = <-c
 		if nil == err {
-			x.availability.BlackoutWithin(x.serviceReleaseSuccessBlackoutPeriod)
+			x.availability.BlackoutWithin(x.timingConfig.ServiceReleaseSuccessBlackoutPeriod)
 		} else {
-			x.availability.BlackoutWithin(x.serviceReleaseFailureBlackoutPeriod)
+			x.availability.BlackoutWithin(x.timingConfig.ServiceReleaseFailureBlackoutPeriod)
 			log.Printf("WARN: failed on releasing service: %v", err)
 		}
 	}
