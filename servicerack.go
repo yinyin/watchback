@@ -30,22 +30,7 @@ type ServiceTimingConfig struct {
 }
 
 func (c * ServiceTimingConfig) copyFrom(other * ServiceTimingConfig) {
-	c.AcceptablePreparePeriod = other.AcceptablePreparePeriod
-	c.AcceptableOnServiceSelfCheckPeriod = other.AcceptableOnServiceSelfCheckPeriod
-	c.AcceptableOffServiceSelfCheckPeriod = other.AcceptableOffServiceSelfCheckPeriod
-	c.AcceptableServiceActivationPeriod = other.AcceptableServiceActivationPeriod
-	c.AcceptableServiceReleasingPeriod = other.AcceptableServiceReleasingPeriod
-
-	c.AcceptableOnServiceSelfCheckFailurePeriod = other.AcceptableOnServiceSelfCheckFailurePeriod
-	c.AcceptableOffServiceSelfCheckFailurePeriod = other.AcceptableOffServiceSelfCheckFailurePeriod
-	c.AcceptableFrontNodeEmptyPeriod = other.AcceptableFrontNodeEmptyPeriod
-
-	c.OnServiceSelfCheckPeriod = other.OnServiceSelfCheckPeriod
-	c.OffServiceSelfCheckPeriod = other.OffServiceSelfCheckPeriod
-
-	c.ServiceActivationFailureBlackoutPeriod = other.ServiceActivationFailureBlackoutPeriod
-	c.ServiceReleaseSuccessBlackoutPeriod = other.ServiceReleaseSuccessBlackoutPeriod
-	c.ServiceReleaseFailureBlackoutPeriod = other.ServiceReleaseFailureBlackoutPeriod
+	*c = *other
 }
 
 type ServiceRack struct {
