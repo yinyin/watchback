@@ -11,7 +11,7 @@ type NodeMessagingAdapter interface {
 
 	// Emit service activation announcement to remote node.
 	// Return true if service activation approval request is approved.
-	RequestServiceActivationApproval(ctx context.Context) (isApproved bool, err error)
+	RequestServiceActivationApproval(ctx context.Context, forceActivation bool) (isApproved bool, err error)
 
 	// Close node connection link
 	Close(ctx context.Context) (err error)
@@ -29,10 +29,18 @@ type ServiceControlAdapter interface {
 	// Return value will be logged and treated as self-check result.
 	Prepare(ctx context.Context) (err error)
 
+	// Perform self-check to see if local environment and running service is normal.
+	// Return nil if passed self-check.
+	// Return error if failed on self-check.
+	OnServiceSelfCheck(ctx context.Context) (err error)
+
 	// Perform self-check to see if local environment is good for starting service.
 	// Return nil if passed self-check.
 	// Return error if failed on self-check.
 	OffServiceSelfCheck(ctx context.Context) (err error)
+
+	// Activate service.
+	ActivateService(ctx context.Context) (err error)
 
 
 	// Perform initialize. Service rack status is ready before calling this function.
@@ -43,9 +51,6 @@ type ServiceControlAdapter interface {
 	// Return nil if passed self-check.
 	// Return error if failed on self-check.
 	PreAcquireSelfCheck() (err error)
-
-	// Acquire service.
-	AcquireService() (err error)
 
 	// Perform self-check to see if running service is good.
 	PostAcquireSelfCheck() (err error)
