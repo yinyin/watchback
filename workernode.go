@@ -55,23 +55,6 @@ func (n * WorkerNode) RunMessagingLoop() {
 	n.messagingRunner.RunLoop()
 }
 
-func (n * WorkerNode) requestIsOnServiceCheck(ctx context.Context) (err error) {
-	onService, err := n.messenger.IsOnService(ctx)
-	if nil != err {
-		return err
-	}
-	if onService {
-		n.serviceOn.AvailableWithin(n.flexOnServiceCheckPeriod)
-	} else {
-		select {
-		case <-ctx.Done():
-		default:
-			n.serviceOn.Reset()	// reset on context not expire yet
-		}
-	}
-	return nil
-}
-
 func (n * WorkerNode) invokeMessagingOperation(operationName string, callable callableFunc, timeout time.Duration) (err error) {
 	for attempt := 0; attempt < maxNodeMessagingOperationAttempt; attempt++ {
 		c, cancel, err := n.messagingRunner.AddCallableWithTimeout(callable, timeout)
@@ -89,6 +72,23 @@ func (n * WorkerNode) invokeMessagingOperation(operationName string, callable ca
 		}
 	}
 	return ErrExceedMaxWorkerNodeMessagingOperationAttempt
+}
+
+func (n * WorkerNode) requestIsOnServiceCheck(ctx context.Context) (err error) {
+	onService, err := n.messenger.IsOnService(ctx)
+	if nil != err {
+		return err
+	}
+	if onService {
+		n.serviceOn.AvailableWithin(n.flexOnServiceCheckPeriod)
+	} else {
+		select {
+		case <-ctx.Done():
+		default:
+			n.serviceOn.Reset()	// reset on context not expire yet
+		}
+	}
+	return nil
 }
 
 func (n * WorkerNode) IsOnService() (running bool, err error) {
