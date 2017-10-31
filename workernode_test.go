@@ -9,7 +9,7 @@ import (
 )
 
 func TestWorkerNode_NodeId(t *testing.T) {
-	n := newWorkerNode(3, nil, 0, 0, 0)
+	n := newWorkerNode(3, nil, 0, 0, 0, 0)
 	if nodeId := n.NodeId(); 3 != nodeId {
 		t.Errorf("unexpected node id: %v", nodeId)
 	}
@@ -40,7 +40,7 @@ func (m *mockNodeMessagingAdapter_AllError) IsOnService(ctx context.Context) (on
 	return false, m.errInstance
 }
 
-func (m *mockNodeMessagingAdapter_AllError) RequestServiceActivationApproval(ctx context.Context) (isApproved bool, err error) {
+func (m *mockNodeMessagingAdapter_AllError) RequestServiceActivationApproval(ctx context.Context, forceActivation bool) (isApproved bool, err error) {
 	m.countRequestServiceActivationApproval++
 	return false, m.errInstance
 
@@ -52,7 +52,7 @@ func (m *mockNodeMessagingAdapter_AllError) Close(ctx context.Context) (err erro
 
 func TestWorkerNode_IsOnService_allError1(t *testing.T) {
 	mock := newMockNodeMessagingAdapter_AllError("allerror-1")
-	n := newWorkerNode(3, mock, time.Second, time.Second, time.Second)
+	n := newWorkerNode(3, mock, time.Second, time.Second, time.Second, time.Second)
 	go n.RunMessagingLoop()
 	running, err := n.IsOnService()
 	if ErrExceedMaxWorkerNodeMessagingOperationAttempt != err {
@@ -104,7 +104,7 @@ func (m *mockNodeMessagingAdapter_C1) IsOnService(ctx context.Context) (onServic
 	return m.resultBool1, m.errInstance1
 }
 
-func (m *mockNodeMessagingAdapter_C1) RequestServiceActivationApproval(ctx context.Context) (isApproved bool, err error) {
+func (m *mockNodeMessagingAdapter_C1) RequestServiceActivationApproval(ctx context.Context, forceActivation bool) (isApproved bool, err error) {
 	m.doSleep()
 	return m.resultBool1, m.errInstance1
 }
@@ -141,7 +141,7 @@ func validate_IsOnService(t *testing.T, n * WorkerNode, t0 time.Time, stepName s
 
 func TestWorkerNode_IsOnService_c1a(t *testing.T) {
 	mock := newMockNodeMessagingAdapter_C1()
-	n := newWorkerNode(3, mock, time.Second+(maxNodeMessagingOperationAttempt*(ExpiredCallableResultCollectPeriod+time.Second)), time.Second, time.Second)
+	n := newWorkerNode(3, mock, time.Second+(maxNodeMessagingOperationAttempt*(ExpiredCallableResultCollectPeriod+time.Second)), time.Second, time.Second, time.Second)
 	go n.RunMessagingLoop()
 	defer n.Close()
 	t0 := time.Now()
