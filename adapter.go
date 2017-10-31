@@ -42,6 +42,9 @@ type ServiceControlAdapter interface {
 	// Activate service.
 	ActivateService(ctx context.Context) (err error)
 
+	// Releasing service
+	ReleaseService(ctx context.Context) (err error)
+
 
 	// Perform initialize. Service rack status is ready before calling this function.
 	// Return value will be logged and treated as self-check result.
@@ -55,8 +58,6 @@ type ServiceControlAdapter interface {
 	// Perform self-check to see if running service is good.
 	PostAcquireSelfCheck() (err error)
 
-	// Releasing service
-	ReleaseService() (err error)
 
 	// Release resources allocated by this service adapter
 	Close() (err error)

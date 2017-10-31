@@ -79,7 +79,7 @@ func validate_ServiceRack_nodeCount(t *testing.T, serviceRack * ServiceRack, fro
 
 func TestServiceRack_AddNode_1normal(t *testing.T) {
 	serviceRack := newServiceRack(2, nil,
-		time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second)
+		time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second)
 	node1, err1 := serviceRack.AddNode(1, newMockNodeMessagerNoop(1), 0, 0, 0, 0)
 	validate_ServiceRack_AddNode_result(t, 1, false, node1, err1)
 	node2, err2 := serviceRack.AddNode(2, newMockNodeMessagerNoop(2), 0, 0, 0, 0)
@@ -127,7 +127,7 @@ func demux_MockingRequestServiceActivationApprovalFactors(factorCode int32) (fro
 
 func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
 	serviceRack := newServiceRack(2, nil,
-		time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second)
+		time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second)
 	var i int32
 	for i =1; i < 4; i++ {
 		serviceRack.AddNode(i, newMockNodeMessagerNoop(i), 0, 0, 0, 0)

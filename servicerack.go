@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 	"log"
-	"context"
 	"errors"
 	uatomic "go.uber.org/atomic"
 )
@@ -23,6 +22,8 @@ type ServiceRack struct {
 	controlRunner callableBundleRunner
 	stateTransit stateTransporter
 
+	anyFrontNodeAvailable availabilityLogic
+
 	serviceActivating uatomic.Bool
 	servicing uatomic.Bool
 
@@ -32,21 +33,27 @@ type ServiceRack struct {
 	acceptablePreparePeriod time.Duration
 	acceptableOnServiceSelfCheckPeriod time.Duration
 	acceptableOffServiceSelfCheckPeriod time.Duration
-	acceptableFrontNodeCheckPeriod time.Duration
 	acceptableServiceActivationPeriod time.Duration
+	acceptableServiceReleasingPeriod time.Duration
 
 	acceptableOnServiceSelfCheckFailurePeriod time.Duration
 	acceptableOffServiceSelfCheckFailurePeriod time.Duration
+	acceptableFrontNodeEmptyPeriod time.Duration
 
 	onServiceSelfCheckPeriod time.Duration
 	offServiceSelfCheckPeriod time.Duration
+
 	serviceActivationFailureBlackoutPeriod time.Duration
+	serviceReleaseSuccessBlackoutPeriod time.Duration
+	serviceReleaseFailureBlackoutPeriod time.Duration
 }
 
 func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter,
-	acceptablePreparePeriod, acceptableOnServiceSelfCheckPeriod, acceptableOffServiceSelfCheckPeriod, acceptableFrontNodeCheckPeriod, acceptableServiceActivationPeriod,
-	acceptableOnServiceSelfCheckFailurePeriod, acceptableOffServiceSelfCheckFailurePeriod,
-		onServiceSelfCheckPeriod, offServiceSelfCheckPeriod, serviceActivationFailureBlackoutPeriod time.Duration) (serviceRack * ServiceRack) {
+	acceptablePreparePeriod, acceptableOnServiceSelfCheckPeriod, acceptableOffServiceSelfCheckPeriod,
+		acceptableServiceActivationPeriod, acceptableServiceReleasingPeriod,
+	acceptableOnServiceSelfCheckFailurePeriod, acceptableOffServiceSelfCheckFailurePeriod, acceptableFrontNodeEmptyPeriod,
+		onServiceSelfCheckPeriod, offServiceSelfCheckPeriod,
+		serviceActivationFailureBlackoutPeriod, serviceReleaseSuccessBlackoutPeriod, serviceReleaseFailureBlackoutPeriod time.Duration) (serviceRack * ServiceRack) {
 	serviceRack = &ServiceRack {
 		localNodeId: localNodeId,
 		serviceController: serviceController,
@@ -56,17 +63,21 @@ func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter,
 		availability: newAvailabilityLogic(),
 		controlRunner: newCallableBundleRunner(1),
 		stateTransit: newStateTransporter(),
+		anyFrontNodeAvailable: newAvailabilityLogic(),
 		lastSelfCheckResult: nil,
 		acceptablePreparePeriod: acceptablePreparePeriod,
 		acceptableOnServiceSelfCheckPeriod: acceptableOnServiceSelfCheckPeriod,
 		acceptableOffServiceSelfCheckPeriod: acceptableOffServiceSelfCheckPeriod,
-		acceptableFrontNodeCheckPeriod: acceptableFrontNodeCheckPeriod,
 		acceptableServiceActivationPeriod: acceptableServiceActivationPeriod,
+		acceptableServiceReleasingPeriod: acceptableServiceReleasingPeriod,
 		acceptableOnServiceSelfCheckFailurePeriod: acceptableOnServiceSelfCheckFailurePeriod,
 		acceptableOffServiceSelfCheckFailurePeriod: acceptableOffServiceSelfCheckFailurePeriod,
+		acceptableFrontNodeEmptyPeriod: acceptableFrontNodeEmptyPeriod,
 		onServiceSelfCheckPeriod: onServiceSelfCheckPeriod,
 		offServiceSelfCheckPeriod: offServiceSelfCheckPeriod,
 		serviceActivationFailureBlackoutPeriod: serviceActivationFailureBlackoutPeriod,
+		serviceReleaseSuccessBlackoutPeriod: serviceReleaseSuccessBlackoutPeriod,
+		serviceReleaseFailureBlackoutPeriod: serviceReleaseFailureBlackoutPeriod,
 	}
 	serviceRack.serviceActivating.Store(false)
 	serviceRack.servicing.Store(false)
@@ -138,13 +149,14 @@ func (x * ServiceRack) isFrontNodeId(nodeId int32) (found bool) {
 	return false
 }
 
-func (x * ServiceRack) doFrontNodeCheck(ctx context.Context) (err error) {
+func (x * ServiceRack) checkFrontNode() (err error) {
 	for _, node := range x.frontNodes {
 		onService, err := node.IsOnService()
 		if nil != err {
 			log.Printf("WARN: caught err on request IsOnService() on node: (id=%v)", node.nodeId)
 		}
 		if true == onService {
+			x.anyFrontNodeAvailable.AvailableWithin(x.acceptableFrontNodeEmptyPeriod)
 			return nil
 		}
 	}
@@ -222,17 +234,15 @@ func (x * ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invok
 }
 
 func (x * ServiceRack) runFrontNodeCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
-	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.doFrontNodeCheck, x.acceptableFrontNodeCheckPeriod)
-	if nil != err {
-		return nil, 0 // TODO: impl
-	}
-	defer cancel()
-	err = <-c
-	if nil != err {
-		if true == x.availability.Availability() {
-			return x.runServiceActivation, 0
+	if err := x.checkFrontNode(); nil != err {
+		if false == x.anyFrontNodeAvailable.Availability() {
+			if true == x.availability.Availability() {
+				return x.runServiceActivation, 0
+			}
+			log.Printf("INFO: not acquire service: all front node not available but local is not available, too.")
+		} else {
+			log.Printf("INFO: front node check failed but still within availability range.")
 		}
-		log.Printf("INFO: not acquire service: all front node not available but local is not available, too.")
 	}
 	return nil, 0 // TODO: impl
 }
@@ -265,6 +275,30 @@ func (x * ServiceRack) runServiceActivation() (nextHandler stateHandler, invokeA
 	return nil, 0 // TODO: impl
 }
 
+func (x * ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter time.Duration) {
+	if (false == x.servicing.Load()) || (nil ==  x.serviceController) {
+		log.Printf("WARN: empty service controller (runServiceRelease)")
+		x.servicing.Store(false)
+		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
+	}
+	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.ReleaseService, x.acceptableServiceReleasingPeriod)
+	if nil != err {
+		log.Printf("ERR: failed on invoke ReleaseService: %v", err)
+		x.availability.BlackoutWithin(x.serviceReleaseFailureBlackoutPeriod)
+	} else {
+		defer cancel()
+		err = <-c
+		if nil == err {
+			x.availability.BlackoutWithin(x.serviceReleaseSuccessBlackoutPeriod)
+		} else {
+			x.availability.BlackoutWithin(x.serviceReleaseFailureBlackoutPeriod)
+			log.Printf("WARN: failed on releasing service: %v", err)
+		}
+	}
+	x.servicing.Store(false)
+	return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
+}
+
 func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActivation bool) (accept bool) {
 	if true == x.serviceActivating.Load() {
 		return false
@@ -277,7 +311,11 @@ func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiv
 			return false
 		}
 	}
-	// TODO: release service
+	if true == x.servicing.Load() {
+		x.stateTransit.AppendDetour(func() {
+			x.runServiceRelease()
+		})
+	}
 	return true
 }
 
