@@ -269,11 +269,11 @@ func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiv
 	if true == x.serviceActivating.Load() {
 		return false
 	}
-	if false == forceActivation {
+	if (false == forceActivation) && (true == x.availability.Availability()) {
 		if true == x.servicing.Load() {
 			return false
 		}
-		if (false == x.isFrontNodeId(nodeId)) && (true == x.availability.Availability()) {
+		if false == x.isFrontNodeId(nodeId) {
 			return false
 		}
 	}
