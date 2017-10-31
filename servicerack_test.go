@@ -100,11 +100,11 @@ var expect_RequestServiceActivationApprovalResult = [16]bool{
 	true, true, true, true,
 	false, false, true, true,
 }
-func demux_MockingRequestServiceActivationApprovalFactors(factorCode int32) (remoteNodeId int32, forceActivation, localAvailable, isServicing, expectAccept bool) {
+func demux_MockingRequestServiceActivationApprovalFactors(factorCode int32) (frontNode, forceActivation, localAvailable, isServicing, expectAccept bool) {
 	if 0 != (factorCode & 0x01) {
-		remoteNodeId = 1
+		frontNode = true
 	} else {
-		remoteNodeId = 3
+		frontNode = false
 	}
 	if 0 != (factorCode & 0x02) {
 		forceActivation = true
@@ -133,7 +133,13 @@ func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
 		serviceRack.AddNode(i, newMockNodeMessagerNoop(i), 0, 0, 0, 0)
 	}
 	for i=0; i < 0x10; i++ {
-		remoteNodeId, forceActivation, localAvailable, isServicing, expectAccept := demux_MockingRequestServiceActivationApprovalFactors(i)
+		var remoteNodeId int32
+		frontNode, forceActivation, localAvailable, isServicing, expectAccept := demux_MockingRequestServiceActivationApprovalFactors(i)
+		if frontNode {
+			remoteNodeId = 1
+		} else {
+			remoteNodeId = 3
+		}
 		serviceRack.availability.Reset()
 		if localAvailable {
 			serviceRack.availability.AvailableWithin(time.Minute)
@@ -147,6 +153,15 @@ func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
 		if expectAccept != accept {
 			t.Errorf("unexpected approval on service activation request: remoteNodeId=%v, forceActivation=%v, localAvailable=%v, isServicing=%v, expectAccept=%v; resultApproval=%v",
 				remoteNodeId, forceActivation, localAvailable, isServicing, expectAccept, accept)
+		}
+		if isServicing != serviceRack.servicing.Load() {
+			t.Errorf("unmatched precondition: isServicing=%v", isServicing)
+		}
+		if localAvailable != serviceRack.availability.Availability() {
+			t.Errorf("unmatched precondition: localAvailable=%v", localAvailable)
+		}
+		if frontNode != serviceRack.isFrontNodeId(remoteNodeId) {
+			t.Errorf("unmatched precondition: frontNode=%v", frontNode)
 		}
 	}
 }
