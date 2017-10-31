@@ -93,3 +93,60 @@ func TestServiceRack_AddNode_1normal(t *testing.T) {
 	// check state of ServiceRack
 	validate_ServiceRack_nodeCount(t, serviceRack, 1, 2)
 }
+
+var expect_RequestServiceActivationApprovalResult = [16]bool{
+	true, true, true, true,
+	false, true, true, true,
+	true, true, true, true,
+	false, false, true, true,
+}
+func demux_MockingRequestServiceActivationApprovalFactors(factorCode int32) (remoteNodeId int32, forceActivation, localAvailable, isServicing, expectAccept bool) {
+	if 0 != (factorCode & 0x01) {
+		remoteNodeId = 1
+	} else {
+		remoteNodeId = 3
+	}
+	if 0 != (factorCode & 0x02) {
+		forceActivation = true
+	} else {
+		forceActivation =false
+	}
+	if 0 != (factorCode & 0x04) {
+		localAvailable = true
+	} else {
+		localAvailable =false
+	}
+	if 0 != (factorCode & 0x08) {
+		isServicing = true
+	} else {
+		isServicing =false
+	}
+	expectAccept = expect_RequestServiceActivationApprovalResult[factorCode]
+	return
+}
+
+func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
+	serviceRack := newServiceRack(2, nil,
+		time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second, time.Second)
+	var i int32
+	for i =1; i < 4; i++ {
+		serviceRack.AddNode(i, newMockNodeMessagerNoop(i), 0, 0, 0, 0)
+	}
+	for i=0; i < 0x10; i++ {
+		remoteNodeId, forceActivation, localAvailable, isServicing, expectAccept := demux_MockingRequestServiceActivationApprovalFactors(i)
+		serviceRack.availability.Reset()
+		if localAvailable {
+			serviceRack.availability.AvailableWithin(time.Minute)
+		}
+		if isServicing {
+			serviceRack.servicing.Store(true)
+		} else {
+			serviceRack.servicing.Store(false)
+		}
+		accept := serviceRack.RequestServiceActivationApproval(remoteNodeId, forceActivation)
+		if expectAccept != accept {
+			t.Errorf("unexpected approval on service activation request: remoteNodeId=%v, forceActivation=%v, localAvailable=%v, isServicing=%v, expectAccept=%v; resultApproval=%v",
+				remoteNodeId, forceActivation, localAvailable, isServicing, expectAccept, accept)
+		}
+	}
+}
