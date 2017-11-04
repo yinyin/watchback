@@ -18,7 +18,7 @@ func (m * mockNodeMessagerNoop) IsOnService(ctx context.Context) (onService bool
 	return false, nil
 }
 
-func (m * mockNodeMessagerNoop) RequestServiceActivationApproval(ctx context.Context, forceActivation bool) (isApproved bool, err error) {
+func (m * mockNodeMessagerNoop) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
 	return true, nil
 }
 

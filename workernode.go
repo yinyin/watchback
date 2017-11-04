@@ -103,7 +103,7 @@ func (n *WorkerNode) IsOnService() (running bool, err error) {
 }
 
 func (n *WorkerNode) requestServiceActivationApprovalCheck(ctx context.Context, localNodeId int32, forceActivation bool) (err error) {
-	isApproved, err := n.messenger.RequestServiceActivationApproval(ctx, forceActivation)
+	isApproved, err := n.messenger.RequestServiceActivationApproval(ctx, localNodeId, forceActivation)
 	if nil != err {
 		return err
 	}

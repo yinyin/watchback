@@ -11,7 +11,7 @@ type NodeMessagingAdapter interface {
 
 	// Emit service activation announcement to remote node.
 	// Return true if service activation approval request is approved.
-	RequestServiceActivationApproval(ctx context.Context, forceActivation bool) (isApproved bool, err error)
+	RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error)
 
 	// Close node connection link
 	Close(ctx context.Context) (err error)

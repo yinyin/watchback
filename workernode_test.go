@@ -40,7 +40,7 @@ func (m *mockNodeMessagingAdapter_AllError) IsOnService(ctx context.Context) (on
 	return false, m.errInstance
 }
 
-func (m *mockNodeMessagingAdapter_AllError) RequestServiceActivationApproval(ctx context.Context, forceActivation bool) (isApproved bool, err error) {
+func (m *mockNodeMessagingAdapter_AllError) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
 	m.countRequestServiceActivationApproval++
 	return false, m.errInstance
 
@@ -104,7 +104,7 @@ func (m *mockNodeMessagingAdapter_C1) IsOnService(ctx context.Context) (onServic
 	return m.resultBool1, m.errInstance1
 }
 
-func (m *mockNodeMessagingAdapter_C1) RequestServiceActivationApproval(ctx context.Context, forceActivation bool) (isApproved bool, err error) {
+func (m *mockNodeMessagingAdapter_C1) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
 	m.doSleep()
 	return m.resultBool1, m.errInstance1
 }
