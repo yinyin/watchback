@@ -78,6 +78,9 @@ type mockNodeMessagingAdapter_C1 struct {
 	resultBool1 bool
 	errInstance1 error
 
+	paramBool1 bool
+	paramInt32b1 int32
+
 	countHasMessagingFailure int32
 }
 
@@ -105,6 +108,8 @@ func (m *mockNodeMessagingAdapter_C1) IsOnService(ctx context.Context) (onServic
 }
 
 func (m *mockNodeMessagingAdapter_C1) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
+	m.paramInt32b1 = requesterNodeId
+	m.paramBool1 = forceActivation
 	m.doSleep()
 	return m.resultBool1, m.errInstance1
 }
@@ -165,4 +170,36 @@ func TestWorkerNode_IsOnService_c1a(t *testing.T) {
 	mock.resultBool1=true
 	mock.setError(true)
 	validate_IsOnService(t, n, t0,"IsOnService_onService1:8-on-error", false, true)
+}
+
+func validate_RequestServiceActivationApproval(t *testing.T, n * WorkerNode, mock * mockNodeMessagingAdapter_C1, stepName string, sleepPeriod time.Duration, requesterNodeId int32, forceActivation, mockAccept, mockError, expectError bool) {
+	mock.sleepPeriod = sleepPeriod
+	mock.resultBool1 = mockAccept
+	mock.setError(mockError)
+	isApprove, err := n.RequestServiceActivationApproval(requesterNodeId, forceActivation)
+	if mockAccept != isApprove {
+		t.Errorf("unexpect accept status on %v: %v != %v", stepName, mockAccept, isApprove)
+	}
+	if (nil == err) && (true == expectError) {
+		t.Errorf("expecting error but no error occur on %v.", stepName)
+	}
+	if (nil != err) && (false == expectError) {
+		t.Errorf("expecting no error but error occurs on %v: %v.", stepName, err)
+	}
+	if mock.paramInt32b1 != requesterNodeId {
+		t.Errorf("passed parameter 1 (requesterNodeId) not consist on %v: %v != %v", stepName, requesterNodeId, mock.paramInt32b1)
+	}
+	if mock.paramBool1 != forceActivation {
+		t.Errorf("passed parameter 2 (forceActivation) not consist on %v: %v != %v", stepName, forceActivation, mock.paramBool1)
+	}
+}
+
+func TestWorkerNode_RequestServiceActivationApproval_c1a(t *testing.T) {
+	mock := newMockNodeMessagingAdapter_C1()
+	n := newWorkerNode(3, mock, time.Second+(maxNodeMessagingOperationAttempt*(ExpiredCallableResultCollectPeriod+time.Second)), time.Second, time.Second, time.Second)
+	go n.RunMessagingLoop()
+	defer n.Close()
+	validate_RequestServiceActivationApproval(t, n, mock,  "RequestServiceActivationApproval-1-success",0, 2, false, true, false, false)
+	validate_RequestServiceActivationApproval(t, n, mock,  "RequestServiceActivationApproval-2-reject", 0, 2, false, false, false, false)
+	validate_RequestServiceActivationApproval(t, n, mock, "RequestServiceActivationApproval-3-force", 0, 2, true, true, false, false)
 }

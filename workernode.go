@@ -11,7 +11,23 @@ const maxNodeMessagingOperationAttempt = 2
 
 var ErrExceedMaxWorkerNodeMessagingOperationAttempt = errors.New("exceed max node messaging operation attempt")
 
-var ErrRemoteRejectServiceActivationRequest = errors.New("remote node rejected service activation request")
+// Callable content for performing ServiceActivationApproval request
+type workerServiceActivationApprovalCallable struct {
+	messenger NodeMessagingAdapter
+	localNodeId int32
+	forceActivation bool
+	isApproved bool
+}
+
+func (c * workerServiceActivationApprovalCallable) requestServiceActivationApproval(ctx context.Context) (err error) {
+	c.isApproved=false
+	isApproved, err := c.messenger.RequestServiceActivationApproval(ctx, c.localNodeId, c.forceActivation)
+	if nil != err {
+		return err
+	}
+	c.isApproved = isApproved
+	return nil
+}
 
 type WorkerNode struct {
 	nodeId    int32
@@ -102,29 +118,15 @@ func (n *WorkerNode) IsOnService() (running bool, err error) {
 	return n.serviceOn.Availability(), err
 }
 
-func (n *WorkerNode) requestServiceActivationApprovalCheck(ctx context.Context, localNodeId int32, forceActivation bool) (err error) {
-	isApproved, err := n.messenger.RequestServiceActivationApproval(ctx, localNodeId, forceActivation)
-	if nil != err {
-		return err
-	}
-	if isApproved {
-		return nil
-	}
-	return ErrRemoteRejectServiceActivationRequest
-}
-
-func (n *WorkerNode) getServiceActivationApprovalCallable(localNodeId int32, forceActivation bool) callableFunc {
-	return func(ctx context.Context) error {
-		return n.requestServiceActivationApprovalCheck(ctx, localNodeId, forceActivation)
-	}
-}
-
 func (n *WorkerNode) RequestServiceActivationApproval(localNodeId int32, forceActivation bool) (isApproved bool, err error) {
-	err = n.invokeMessagingOperation("RequestServiceActivationApproval", n.getServiceActivationApprovalCallable(localNodeId, forceActivation), n.expectServiceActivationRequestWithin)
+	callable := workerServiceActivationApprovalCallable {
+		messenger: n.messenger,
+		localNodeId: localNodeId,
+		forceActivation: forceActivation,
+	}
+	err = n.invokeMessagingOperation("RequestServiceActivationApproval", callable.requestServiceActivationApproval, n.expectServiceActivationRequestWithin)
 	if nil == err {
-		return true, nil
-	} else if ErrRemoteRejectServiceActivationRequest == err {
-		return false, nil
+		return callable.isApproved, nil
 	}
 	return false, err
 }
