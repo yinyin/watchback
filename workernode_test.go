@@ -202,4 +202,6 @@ func TestWorkerNode_RequestServiceActivationApproval_c1a(t *testing.T) {
 	validate_RequestServiceActivationApproval(t, n, mock,  "RequestServiceActivationApproval-1-success",0, 2, false, true, false, false)
 	validate_RequestServiceActivationApproval(t, n, mock,  "RequestServiceActivationApproval-2-reject", 0, 2, false, false, false, false)
 	validate_RequestServiceActivationApproval(t, n, mock, "RequestServiceActivationApproval-3-force", 0, 2, true, true, false, false)
+	validate_RequestServiceActivationApproval(t, n, mock, "RequestServiceActivationApproval-4-exception", 0, 2, false, false, true, true)
+	validate_RequestServiceActivationApproval(t, n, mock, "RequestServiceActivationApproval-5-timeout", time.Second * 5, 2, false, false, false, true)
 }
