@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Mock NodeMessang
+// Mock NodeMessagingAdapter for no operation
 type mockNodeMessagerNoop struct {
 	nodeId int32
 }
@@ -28,6 +28,41 @@ func (m * mockNodeMessagerNoop) Close(ctx context.Context) (err error) {
 
 func newMockNodeMessagerNoop(nodeId int32) (m * mockNodeMessagerNoop) {
 	return &mockNodeMessagerNoop {
+		nodeId: nodeId,
+	}
+}
+
+// Mock NodeMessagingAdapter for no operation
+type mockNodeMessagerClock struct {
+	nodeId int32
+
+	lastHasMessagingFailureAt time.Time
+	lastIsOnService time.Time
+	lastRequestServiceActivationApproval time.Time
+	lastClose time.Time
+}
+
+func (m * mockNodeMessagerClock) HasMessagingFailure(err error) {
+	m.lastHasMessagingFailureAt = time.Now()
+}
+
+func (m * mockNodeMessagerClock) IsOnService(ctx context.Context) (onService bool, err error) {
+	m.lastIsOnService = time.Now()
+	return false, nil
+}
+
+func (m * mockNodeMessagerClock) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
+	m.lastRequestServiceActivationApproval = time.Now()
+	return true, nil
+}
+
+func (m * mockNodeMessagerClock) Close(ctx context.Context) (err error) {
+	m.lastClose = time.Now()
+	return nil
+}
+
+func newMockNodeMessagerClock(nodeId int32) (m * mockNodeMessagerClock) {
+	return &mockNodeMessagerClock {
 		nodeId: nodeId,
 	}
 }
@@ -268,5 +303,44 @@ func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
 		if frontNode != serviceRack.isFrontNodeId(remoteNodeId) {
 			t.Errorf("unmatched precondition: frontNode=%v", frontNode)
 		}
+	}
+}
+
+func TestServiceRack_nodeLoopStartStop(t *testing.T) {
+	var err error
+	serviceRack := newServiceRack(2, nil, newDefaultServiceTimingConfigForTest_1())
+	nc1 := newMockNodeMessagerClock(1)
+	_, err = serviceRack.AddNode(1, nc1, 0, 0, 0, time.Second)
+	if nil != err {
+		t.Errorf("cannot add node 1 to service rack: %v", err)
+	}
+	nc2 := newMockNodeMessagerClock(2)
+	_, err = serviceRack.AddNode(2, nc2, 0, 0, 0, time.Second)
+	if nil != err {
+		t.Errorf("cannot add node 2 to service rack: $v", err)
+	}
+	nc3 := newMockNodeMessagerClock(3)
+	_, err = serviceRack.AddNode(3, nc3, 0, 0, 0, time.Second)
+	if nil != err {
+		t.Errorf("cannot add node 3 to service rack: %v", err)
+	}
+	tStart := time.Now()
+	serviceRack.startNodeLoops()
+	if !nc1.lastClose.IsZero() {
+		t.Error("initial last close time stamp is not zero (node-1)")
+	}
+	if !nc3.lastClose.IsZero() {
+		t.Error("initial last close time stamp is not zero (node-3)")
+	}
+	serviceRack.stopNodeLoops()
+	tEnd := time.Now()
+	if nc1.lastClose.After(tEnd) || nc1.lastClose.Before(tStart) {
+		t.Errorf("node 1 clock out of expected range: %v, %v, %v", tStart, nc1.lastClose, tEnd)
+	}
+	if !nc2.lastClose.IsZero() {
+		t.Error("node 2 clock unexpected: %v", nc2.lastClose)
+	}
+	if nc3.lastClose.After(tEnd) || nc3.lastClose.Before(tStart) {
+		t.Errorf("node 3 clock out of expected range: %v, %v, %v", tStart, nc3.lastClose, tEnd)
 	}
 }
