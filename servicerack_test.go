@@ -426,4 +426,30 @@ func TestServiceRack_checkFrontNode(t *testing.T) {
 	if nil != err {
 		t.Errorf("expecting no error for checkFrontNode but error occurs (case-3): %v", err)
 	}
+	// case 4: nodes failed within check range
+	for i := 0; i < 6; i++ {
+		nm[i].resultBool1 = false
+		nm[i].setError(true)
+	}
+	err = serviceRack.checkFrontNode()
+	if nil != err {
+		t.Errorf("expecting no error for checkFrontNode but error occurs (case-4): %v", err)
+	}
+	time.Sleep(2 * time.Second)
+	// case 5: all nodes failed again
+	for i := 0; i < 6; i++ {
+		nm[i].resultBool1 = false
+		nm[i].setError(true)
+	}
+	err = serviceRack.checkFrontNode()
+	if nil == err {
+		t.Errorf("expecting error for checkFrontNode but no error occurs (case-5)")
+	}
+	// case 6: one node works
+	nm[3].resultBool1 = true
+	nm[3].setError(false)
+	err = serviceRack.checkFrontNode()
+	if nil != err {
+		t.Errorf("expecting no error for checkFrontNode but error occurs (case-6): %v", err)
+	}
 }
