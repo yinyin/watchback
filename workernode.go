@@ -30,11 +30,11 @@ func (c * workerServiceActivationApprovalCallable) requestServiceActivationAppro
 }
 
 type NodeMessagingTimingConfig struct {
-	flexOnServiceCheckPeriod             time.Duration
+	FlexOnServiceCheckPeriod time.Duration // the node will consider on-service within given duration after a positive check
 
-	expectOnServiceQueryWithin           time.Duration
-	expectServiceActivationRequestWithin time.Duration
-	expectMessengerCloseWithin           time.Duration
+	ExpectOnServiceQueryWithin           time.Duration // time-out duration for on-service query
+	ExpectServiceActivationRequestWithin time.Duration // time-out duration for service-activation-request
+	ExpectMessengerCloseWithin           time.Duration // time-out duration for closing node messenger
 }
 
 func (c * NodeMessagingTimingConfig) copyFrom(other * NodeMessagingTimingConfig) {
@@ -68,7 +68,7 @@ func (n *WorkerNode) NodeId() (nodeId int32) {
 }
 
 func (n *WorkerNode) Close() {
-	c, cancel, err := n.messagingRunner.AddCallableWithTimeout(n.messenger.Close, n.messagingTimingConfig.expectMessengerCloseWithin)
+	c, cancel, err := n.messagingRunner.AddCallableWithTimeout(n.messenger.Close, n.messagingTimingConfig.ExpectMessengerCloseWithin)
 	if nil != err {
 		log.Printf("WARN: cannot invoke Close() of messenger (nodeId=%v): %v", n.nodeId, err)
 	} else {
@@ -107,7 +107,7 @@ func (n *WorkerNode) requestIsOnServiceCheck(ctx context.Context) (err error) {
 		return err
 	}
 	if onService {
-		n.serviceOn.AvailableWithin(n.messagingTimingConfig.flexOnServiceCheckPeriod)
+		n.serviceOn.AvailableWithin(n.messagingTimingConfig.FlexOnServiceCheckPeriod)
 	} else {
 		select {
 		case <-ctx.Done():
@@ -119,7 +119,7 @@ func (n *WorkerNode) requestIsOnServiceCheck(ctx context.Context) (err error) {
 }
 
 func (n *WorkerNode) IsOnService() (running bool, err error) {
-	err = n.invokeMessagingOperation("IsOnService", n.requestIsOnServiceCheck, n.messagingTimingConfig.expectOnServiceQueryWithin)
+	err = n.invokeMessagingOperation("IsOnService", n.requestIsOnServiceCheck, n.messagingTimingConfig.ExpectOnServiceQueryWithin)
 	return n.serviceOn.Availability(), err
 }
 
@@ -129,7 +129,7 @@ func (n *WorkerNode) RequestServiceActivationApproval(localNodeId int32, forceAc
 		localNodeId: localNodeId,
 		forceActivation: forceActivation,
 	}
-	err = n.invokeMessagingOperation("RequestServiceActivationApproval", callable.requestServiceActivationApproval, n.messagingTimingConfig.expectServiceActivationRequestWithin)
+	err = n.invokeMessagingOperation("RequestServiceActivationApproval", callable.requestServiceActivationApproval, n.messagingTimingConfig.ExpectServiceActivationRequestWithin)
 	if nil == err {
 		return callable.isApproved, nil
 	}

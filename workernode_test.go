@@ -10,28 +10,28 @@ import (
 
 func newDefaultNodeMessengingTimingConfigForTest_0() (cfg *NodeMessagingTimingConfig) {
 	return &NodeMessagingTimingConfig {
-		flexOnServiceCheckPeriod: 0,
-		expectOnServiceQueryWithin: 0,
-		expectServiceActivationRequestWithin: 0,
-		expectMessengerCloseWithin: 0,
+		FlexOnServiceCheckPeriod:             0,
+		ExpectOnServiceQueryWithin:           0,
+		ExpectServiceActivationRequestWithin: 0,
+		ExpectMessengerCloseWithin:           0,
 	}
 }
 
 func newDefaultNodeMessengingTimingConfigForTest_1() (cfg *NodeMessagingTimingConfig) {
 	return &NodeMessagingTimingConfig {
-		flexOnServiceCheckPeriod: time.Second,
-		expectOnServiceQueryWithin: time.Second,
-		expectServiceActivationRequestWithin: time.Second,
-		expectMessengerCloseWithin: time.Second,
+		FlexOnServiceCheckPeriod:             time.Second,
+		ExpectOnServiceQueryWithin:           time.Second,
+		ExpectServiceActivationRequestWithin: time.Second,
+		ExpectMessengerCloseWithin:           time.Second,
 	}
 }
 
 func newDefaultNodeMessengingTimingConfigForTest_2() (cfg *NodeMessagingTimingConfig) {
 	return &NodeMessagingTimingConfig {
-		flexOnServiceCheckPeriod: time.Second+(maxNodeMessagingOperationAttempt*(ExpiredCallableResultCollectPeriod+time.Second)),
-		expectOnServiceQueryWithin: time.Second,
-		expectServiceActivationRequestWithin: time.Second,
-		expectMessengerCloseWithin: time.Second,
+		FlexOnServiceCheckPeriod:             time.Second+(maxNodeMessagingOperationAttempt*(ExpiredCallableResultCollectPeriod+time.Second)),
+		ExpectOnServiceQueryWithin:           time.Second,
+		ExpectServiceActivationRequestWithin: time.Second,
+		ExpectMessengerCloseWithin:           time.Second,
 	}
 }
 
