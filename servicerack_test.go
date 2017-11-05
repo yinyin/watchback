@@ -380,3 +380,50 @@ func TestServiceRack_durationToNextSelfChecks(t *testing.T) {
 		t.Errorf("duration to next off service check not within expected range (~33 sec): %v", durOff)
 	}
 }
+
+func TestServiceRack_checkFrontNode(t *testing.T) {
+	var err error
+	serviceRack := newServiceRack(5, nil, newDefaultServiceTimingConfigForTest_3())
+	nodeMsgTimingCfg := newDefaultNodeMessengingTimingConfigForTest_1()
+	var nm [6]*mockNodeMessagingAdapter_C1
+	for i := 0; i < 6; i++ {
+		nodeId := int32(i + 1)
+		aux := newMockNodeMessagingAdapter_C1()
+		nm[i] = aux
+		_, err = serviceRack.AddNode(nodeId, aux, nodeMsgTimingCfg)
+		if nil != err {
+			t.Errorf("cannot add node %v to service rack: %v", nodeId, err)
+		}
+	}
+	serviceRack.startNodeLoops()
+	defer serviceRack.stopNodeLoops()
+	go serviceRack.controlRunner.RunLoop()
+	defer serviceRack.controlRunner.Close()
+	// case 1: all node return false
+	for i := 0; i < 6; i++ {
+		nm[i].resultBool1 = false
+		nm[i].setError(false)
+	}
+	err = serviceRack.checkFrontNode()
+	if nil == err {
+		t.Errorf("expecting error for checkFrontNode but no error occurs (case-1)")
+	}
+	// case 2: all node raise exception
+	for i := 0; i < 6; i++ {
+		nm[i].resultBool1 = false
+		nm[i].setError(true)
+	}
+	err = serviceRack.checkFrontNode()
+	if nil == err {
+		t.Errorf("expecting error for checkFrontNode but no error occurs (case-2)")
+	}
+	// case 3: all node return true
+	for i := 0; i < 6; i++ {
+		nm[i].resultBool1 = true
+		nm[i].setError(false)
+	}
+	err = serviceRack.checkFrontNode()
+	if nil != err {
+		t.Errorf("expecting no error for checkFrontNode but error occurs (case-3): %v", err)
+	}
+}
