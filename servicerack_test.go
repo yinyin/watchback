@@ -154,6 +154,27 @@ func newDefaultServiceTimingConfigForTest_2() (cfg * ServiceTimingConfig) {
 	}
 }
 
+func newDefaultServiceTimingConfigForTest_3() (cfg * ServiceTimingConfig) {
+	return &ServiceTimingConfig {
+		AcceptablePreparePeriod: time.Second * 3,
+		AcceptableOnServiceSelfCheckPeriod: time.Second * 4,
+		AcceptableOffServiceSelfCheckPeriod: time.Second * 5,
+		AcceptableServiceActivationPeriod: time.Second * 5,
+		AcceptableServiceReleasingPeriod   : time.Second * 7,
+
+		AcceptableOnServiceSelfCheckFailurePeriod  : time.Second * 8,
+		AcceptableOffServiceSelfCheckFailurePeriod : time.Second * 9,
+		AcceptableFrontNodeEmptyPeriod             : time.Second * 10,
+
+		OnServiceSelfCheckPeriod  : time.Second * 23,
+		OffServiceSelfCheckPeriod : time.Second * 33,
+
+		ServiceActivationFailureBlackoutPeriod : time.Second * 13,
+		ServiceReleaseSuccessBlackoutPeriod    : time.Second * 14,
+		ServiceReleaseFailureBlackoutPeriod: time.Second * 15,
+	}
+}
+
 func validate_SameServiceTimingConfigContent(t *testing.T, cfg1 * ServiceTimingConfig, cfg2 * ServiceTimingConfig) {
 	if cfg1.AcceptablePreparePeriod != cfg2.AcceptablePreparePeriod {
 		t.Errorf("configuration value for AcceptablePreparePeriod is different: %v vs. %v",
@@ -342,5 +363,18 @@ func TestServiceRack_nodeLoopStartStop(t *testing.T) {
 	}
 	if nc3.lastClose.After(tEnd) || nc3.lastClose.Before(tStart) {
 		t.Errorf("node 3 clock out of expected range: %v, %v, %v", tStart, nc3.lastClose, tEnd)
+	}
+}
+
+func TestServiceRack_durationToNextSelfChecks(t *testing.T) {
+	serviceRack := newServiceRack(2, nil, newDefaultServiceTimingConfigForTest_3())
+	serviceRack.renewLastSelfCheckTimeStamp()
+	durOn := serviceRack.durationToNextOnServiceSelfCheck()
+	durOff := serviceRack.durationToNextOffServiceSelfCheck()
+	if (durOn < time.Second * 22) || (durOn > time.Second * 23) {
+		t.Errorf("duration to next on service check not within expected range (~23 sec): %v", durOn)
+	}
+	if (durOff < time.Second * 32) || (durOff > time.Second * 33) {
+		t.Errorf("duration to next off service check not within expected range (~33 sec): %v", durOff)
 	}
 }
