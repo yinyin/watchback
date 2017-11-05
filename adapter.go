@@ -15,12 +15,6 @@ type NodeMessagingAdapter interface {
 
 	// Close node connection link
 	Close(ctx context.Context) (err error)
-
-
-	// Return true if fetched status is in Normal state.
-	// Return false for protocol which status can be determine within FetchStatus() function.
-	// This function might be invoke in parallel with FetchStatus().
-	// -- CheckStatusNormal(ctx context.Context) (isNormal bool, err error)
 }
 
 // Represent a local instance of service.
