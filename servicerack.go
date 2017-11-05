@@ -138,6 +138,7 @@ func (x * ServiceRack) isFrontNodeId(nodeId int32) (found bool) {
 	return false
 }
 
+// Check if any front node is operating normally (ie: is running service)
 func (x * ServiceRack) checkFrontNode() (err error) {
 	for _, node := range x.frontNodes {
 		onService, err := node.IsOnService()
