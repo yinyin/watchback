@@ -335,17 +335,17 @@ func TestServiceRack_nodeLoopStartStop(t *testing.T) {
 	nc1 := newMockNodeMessagerClock(1)
 	_, err = serviceRack.AddNode(1, nc1, nodeMsgTimingCfg)
 	if nil != err {
-		t.Errorf("cannot add node 1 to service rack: %v", err)
+		t.Fatalf("cannot add node 1 to service rack: %v", err)
 	}
 	nc2 := newMockNodeMessagerClock(2)
 	_, err = serviceRack.AddNode(2, nc2, nodeMsgTimingCfg)
 	if nil != err {
-		t.Errorf("cannot add node 2 to service rack: $v", err)
+		t.Fatalf("cannot add node 2 to service rack: $v", err)
 	}
 	nc3 := newMockNodeMessagerClock(3)
 	_, err = serviceRack.AddNode(3, nc3, nodeMsgTimingCfg)
 	if nil != err {
-		t.Errorf("cannot add node 3 to service rack: %v", err)
+		t.Fatalf("cannot add node 3 to service rack: %v", err)
 	}
 	tStart := time.Now()
 	serviceRack.startNodeLoops()
@@ -392,7 +392,7 @@ func TestServiceRack_checkFrontNode(t *testing.T) {
 		nm[i] = aux
 		_, err = serviceRack.AddNode(nodeId, aux, nodeMsgTimingCfg)
 		if nil != err {
-			t.Errorf("cannot add node %v to service rack: %v", nodeId, err)
+			t.Fatalf("cannot add node %v to service rack: %v", nodeId, err)
 		}
 	}
 	serviceRack.startNodeLoops()
