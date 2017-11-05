@@ -381,24 +381,30 @@ func TestServiceRack_durationToNextSelfChecks(t *testing.T) {
 	}
 }
 
-func TestServiceRack_checkFrontNode(t *testing.T) {
-	var err error
-	serviceRack := newServiceRack(5, nil, newDefaultServiceTimingConfigForTest_3())
-	nodeMsgTimingCfg := newDefaultNodeMessengingTimingConfigForTest_1()
-	var nm [6]*mockNodeMessagingAdapter_C1
+func prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t *testing.T, nodeMsgTimingCfg * NodeMessagingTimingConfig) (serviceRack *ServiceRack, nm [6]*mockNodeMessagingAdapter_C1, teardownFunc func()()) {
+	serviceRack = newServiceRack(5, nil, newDefaultServiceTimingConfigForTest_3())
 	for i := 0; i < 6; i++ {
 		nodeId := int32(i + 1)
 		aux := newMockNodeMessagingAdapter_C1()
 		nm[i] = aux
-		_, err = serviceRack.AddNode(nodeId, aux, nodeMsgTimingCfg)
+		_, err := serviceRack.AddNode(nodeId, aux, nodeMsgTimingCfg)
 		if nil != err {
 			t.Fatalf("cannot add node %v to service rack: %v", nodeId, err)
 		}
 	}
 	serviceRack.startNodeLoops()
-	defer serviceRack.stopNodeLoops()
 	go serviceRack.controlRunner.RunLoop()
-	defer serviceRack.controlRunner.Close()
+	teardownFunc = func () {
+		serviceRack.stopNodeLoops()
+		serviceRack.controlRunner.Close()
+	}
+	return serviceRack, nm, teardownFunc
+}
+
+func TestServiceRack_checkFrontNode(t *testing.T) {
+	var err error
+	serviceRack, nm, tearDownFunc := prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
+	defer tearDownFunc()
 	// case 1: all node return false
 	for i := 0; i < 6; i++ {
 		nm[i].resultBool1 = false
@@ -452,4 +458,107 @@ func TestServiceRack_checkFrontNode(t *testing.T) {
 	if nil != err {
 		t.Errorf("expecting no error for checkFrontNode but error occurs (case-6): %v", err)
 	}
+}
+
+func TestServiceRack_concurServiceActivation(t *testing.T) {
+	serviceRack, nm, tearDownFunc := prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
+	defer tearDownFunc()
+	t.Run("1-all-reject", func(t *testing.T) {
+		for i := 0; i < 6; i++ {
+			nm[i].resultBool1 = false
+			nm[i].setError(false)
+		}
+		success := serviceRack.concurServiceActivation(false)
+		if success {
+			t.Errorf("expecting not concur")
+		}
+	})
+	t.Run("2-all-reject-except-1", func(t *testing.T) {
+		nm[3].resultBool1 = true
+		success := serviceRack.concurServiceActivation(false)
+		if success {
+			t.Errorf("expecting not concur")
+		}
+	})
+	t.Run("3-all-accept", func(t *testing.T) {
+		for i := 0; i < 6; i++ {
+			nm[i].resultBool1 = true
+			nm[i].setError(false)
+		}
+		success := serviceRack.concurServiceActivation(false)
+		if !success {
+			t.Errorf("expecting concur")
+		}
+		for i := 0; i < 6; i++ {
+			nodeId := i + 1
+			if 5 == nodeId {
+				continue	// skip local node
+			}
+			if false != nm[i].paramBool1 {
+				t.Errorf("expecting reciving force-activation false (node-id: %v): %v", nodeId, nm[i].paramBool1)
+			}
+			if 5 != nm[i].paramInt32b1 {
+				t.Errorf("expecting reciving remote node id 5 (node-id: %v): %v", nodeId, nm[i].paramInt32b1)
+			}
+		}
+	})
+	t.Run("4-one-reject", func(t *testing.T) {
+		nm[3].resultBool1 = false
+		success := serviceRack.concurServiceActivation(false)
+		if success {
+			t.Errorf("expecting not concur")
+		}
+	})
+	t.Run("5-one-in-exception", func(t *testing.T) {
+		nm[3].resultBool1 = false
+		nm[3].setError(true)
+		success := serviceRack.concurServiceActivation(false)
+		if !success {
+			t.Errorf("expecting concur")
+		}
+	})
+	t.Run("6-all-exception", func(t *testing.T) {
+		for i := 0; i < 6; i++ {
+			nm[i].resultBool1 = true
+			nm[i].setError(true)
+		}
+		success := serviceRack.concurServiceActivation(false)
+		if !success {
+			t.Errorf("expecting concur")
+		}
+	})
+	t.Run("7-reject-w-force", func(t *testing.T) {
+		for i := 0; i < 6; i++ {
+			nm[i].resultBool1 = false
+			nm[i].setError(false)
+			nm[i].paramBool1 = false
+			nm[i].paramInt32b1 = -1
+		}
+		success := serviceRack.concurServiceActivation(true)
+		if success {
+			t.Errorf("expecting not concur")
+		}
+		for i := 0; i < 6; i++ {
+			nodeId := i + 1
+			if 5 == nodeId {
+				continue
+			}
+			if 1 == nodeId {
+				if true != nm[i].paramBool1 {
+					t.Errorf("expecting reciving force-activation true (node-Id: %v): %v", nodeId, nm[i].paramBool1)
+				}
+				if 5 != nm[i].paramInt32b1 {
+					t.Errorf("expecting reciving remote node id 5 (node-Id: %v): %v", nodeId, nm[i].paramInt32b1)
+				}
+			} else {
+				if false != nm[i].paramBool1 {
+					t.Errorf("expecting reciving force-activation false (not traversal) (node-Id: %v): %v", nodeId, nm[i].paramBool1)
+				}
+				if -1 != nm[i].paramInt32b1 {
+					t.Errorf("expecting reciving remote node id -1 (not traversal) (node-Id: %v): %v", nodeId, nm[i].paramInt32b1)
+				}
+			}
+		}
+	})
+
 }
