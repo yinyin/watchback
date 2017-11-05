@@ -175,6 +175,28 @@ func newDefaultServiceTimingConfigForTest_3() (cfg * ServiceTimingConfig) {
 	}
 }
 
+func newDefaultServiceTimingConfigForTest_P1() (cfg * ServiceTimingConfig) {
+	return &ServiceTimingConfig {
+		AcceptablePreparePeriod: time.Second * 3,
+		AcceptableOnServiceSelfCheckPeriod: time.Second * 3,
+		AcceptableOffServiceSelfCheckPeriod: time.Second * 3,
+		AcceptableServiceActivationPeriod: time.Second * 3,
+		AcceptableServiceReleasingPeriod   : time.Second * 3,
+
+		AcceptableOnServiceSelfCheckFailurePeriod  : time.Second * 6,
+		AcceptableOffServiceSelfCheckFailurePeriod : time.Second * 6,
+		AcceptableFrontNodeEmptyPeriod             : time.Second * 10,
+
+		OnServiceSelfCheckPeriod  : time.Second * 3,
+		OffServiceSelfCheckPeriod : time.Second * 3,
+
+		ServiceActivationFailureBlackoutPeriod : time.Second * 10,
+		ServiceReleaseSuccessBlackoutPeriod    : time.Second * 10,
+		ServiceReleaseFailureBlackoutPeriod: time.Second * 10,
+	}
+}
+
+
 func validate_SameServiceTimingConfigContent(t *testing.T, cfg1 * ServiceTimingConfig, cfg2 * ServiceTimingConfig) {
 	if cfg1.AcceptablePreparePeriod != cfg2.AcceptablePreparePeriod {
 		t.Errorf("configuration value for AcceptablePreparePeriod is different: %v vs. %v",
@@ -560,5 +582,213 @@ func TestServiceRack_concurServiceActivation(t *testing.T) {
 			}
 		}
 	})
+}
 
+type mockNodeMessagingAdapter_P1 struct {
+	countHasMessagingFailure int32
+
+	tqueueIsOnService chan time.Time
+	tqueueRequestServiceActivationApproval chan time.Time
+}
+
+func newMockNodeMessagingAdapter_P1() (m *mockNodeMessagingAdapter_P1) {
+	return &mockNodeMessagingAdapter_P1 {
+		countHasMessagingFailure: 0,
+		tqueueIsOnService: make(chan time.Time, 8),
+		tqueueRequestServiceActivationApproval: make(chan time.Time, 8),
+	}
+}
+
+func (m *mockNodeMessagingAdapter_P1) HasMessagingFailure(err error) {
+	m.countHasMessagingFailure++
+}
+
+func (m *mockNodeMessagingAdapter_P1) IsOnService(ctx context.Context) (onService bool, err error) {
+	select {
+	case m.tqueueIsOnService<-time.Now():
+	default:
+	}
+	return false, nil
+}
+
+func (m *mockNodeMessagingAdapter_P1) expectIsOnService(t *testing.T) {
+	select {
+	case <-m.tqueueIsOnService:
+	case <-time.After(time.Second * 10):
+		t.Fatal("blocked at IsOnService")
+	}
+}
+
+func (m *mockNodeMessagingAdapter_P1) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
+	select {
+	case m.tqueueRequestServiceActivationApproval<-time.Now():
+	default:
+	}
+	return true, nil
+}
+
+func (m *mockNodeMessagingAdapter_P1) expectRequestServiceActivationApproval(t *testing.T) {
+	select {
+	case <-m.tqueueRequestServiceActivationApproval:
+	case <-time.After(time.Second * 10):
+		t.Fatal("blocked at RequestServiceActivationApproval")
+	}
+}
+
+func (m *mockNodeMessagingAdapter_P1) Close(ctx context.Context) (err error) {
+	return nil
+}
+
+const (
+	_ = iota
+	testeventServiceControlPrepare
+	testeventServiceControlOnServiceSelfCheck
+	testeventServiceControlOffServiceSelfCheck
+	testeventServiceControlActivateService
+	testeventServiceControlReleaseService
+	testeventServiceControlClose
+)
+
+type mockServiceControlAdapter_P1 struct {
+	lastPrepareAt time.Time
+	lastOnServiceSelfCheckAt time.Time
+	lastOffServiceSelfCheckAt time.Time
+	lastActivateServiceAt time.Time
+	lastReleaseServiceAt time.Time
+	lastCloseAt time.Time
+
+	eventCh chan int
+}
+
+func newMockServiceControlAdapter_P1() (m *mockServiceControlAdapter_P1) {
+	return &mockServiceControlAdapter_P1 {
+		eventCh: make(chan int, 8),
+	}
+}
+
+func (m *mockServiceControlAdapter_P1) Prepare(ctx context.Context) (err error) {
+	m.lastPrepareAt = time.Now()
+	m.eventCh <- testeventServiceControlPrepare
+	return nil
+}
+
+func (m *mockServiceControlAdapter_P1) OnServiceSelfCheck(ctx context.Context) (err error) {
+	m.lastOnServiceSelfCheckAt = time.Now()
+	m.eventCh <- testeventServiceControlOnServiceSelfCheck
+	return nil
+}
+
+func (m *mockServiceControlAdapter_P1) OffServiceSelfCheck(ctx context.Context) (err error) {
+	m.lastOffServiceSelfCheckAt = time.Now()
+	m.eventCh <- testeventServiceControlOffServiceSelfCheck
+	return nil
+}
+
+func (m *mockServiceControlAdapter_P1) ActivateService(ctx context.Context) (err error) {
+	m.lastActivateServiceAt = time.Now()
+	m.eventCh <- testeventServiceControlActivateService
+	return nil
+}
+
+func (m *mockServiceControlAdapter_P1) ReleaseService(ctx context.Context) (err error) {
+	m.lastReleaseServiceAt = time.Now()
+	m.eventCh <- testeventServiceControlReleaseService
+	return nil
+}
+
+func (m *mockServiceControlAdapter_P1) Close(ctx context.Context) (err error) {
+	m.lastCloseAt = time.Now()
+	m.eventCh <- testeventServiceControlClose
+	return nil
+}
+
+func (m *mockServiceControlAdapter_P1) validate_eventSequence(t *testing.T, eventSeq []int) {
+	idx := 0
+	for evnt := range m.eventCh {
+		if evnt != eventSeq[idx] {
+			t.Fatalf("unexpected event id: [index=%v] %v != %v", idx, evnt, eventSeq[idx])
+		}
+		idx++
+		if -9 == eventSeq[idx] {
+			break
+		}
+	}
+}
+
+func prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t *testing.T, nodeMsgTimingCfg * NodeMessagingTimingConfig) (serviceController *mockServiceControlAdapter_P1, serviceRack *ServiceRack, nm [3]*mockNodeMessagingAdapter_P1, teardownFunc func()()) {
+	serviceController = newMockServiceControlAdapter_P1()
+	serviceRack = newServiceRack(2, serviceController, newDefaultServiceTimingConfigForTest_P1())
+	for i := 0; i < 3; i++ {
+		nodeId := int32(i + 1)
+		aux := newMockNodeMessagingAdapter_P1()
+		nm[i] = aux
+		_, err := serviceRack.AddNode(nodeId, aux, nodeMsgTimingCfg)
+		if nil != err {
+			t.Fatalf("cannot add node %v to service rack: %v", nodeId, err)
+		}
+	}
+	go serviceRack.StateTransitionLoop()
+	teardownFunc = func () {
+		serviceRack.Close()
+	}
+	return serviceController, serviceRack, nm, teardownFunc
+}
+
+func TestServiceRack_StateTransitionLoop_flowNormal(t *testing.T) {
+	serviceController, serviceRack, nm, teardownFunc := prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
+	defer teardownFunc()
+	t.Run("1-prepare", func(t *testing.T) {
+		var st = []int {
+			testeventServiceControlPrepare,
+			testeventServiceControlOffServiceSelfCheck,
+			-9,
+		}
+		serviceController.validate_eventSequence(t, st)
+	})
+	t.Run("2-check_1-is-on-service", func(t *testing.T) {
+		select {
+		case <-nm[0].tqueueIsOnService:
+		case <-nm[2].tqueueIsOnService:
+		case <-time.After(time.Second * 10):
+			t.Fatal("blocked at IsOnService stage.")
+		}
+	})
+	t.Run("2-check_reqserv-n1", func(t *testing.T) {
+		nm[0].expectRequestServiceActivationApproval(t)
+	})
+	t.Run("2-check_reqserv-n3", func(t *testing.T) {
+		nm[2].expectRequestServiceActivationApproval(t)
+	})
+	t.Run("3-activate", func(t *testing.T) {
+		var st = []int{
+			testeventServiceControlActivateService,
+			testeventServiceControlOnServiceSelfCheck,
+			testeventServiceControlOnServiceSelfCheck,
+			-9,
+		}
+		serviceController.validate_eventSequence(t, st)
+	})
+	t.Run("4-service", func(t *testing.T) {
+		if false == serviceRack.servicing.Load() {
+			t.Fatal("expect servicing flag on.")
+		}
+	})
+	t.Run("5-req-activate", func(t *testing.T) {
+		accept := serviceRack.RequestServiceActivationApproval(1, false)
+		if true == accept {
+			t.Fatalf("expect request rejected: %v", accept)
+		}
+	})
+	t.Run("6-req-activate", func(t *testing.T) {
+		accept := serviceRack.RequestServiceActivationApproval(1, true)
+		if false == accept {
+			t.Fatalf("expect request accept: %v", accept)
+		}
+		var st = []int {
+			testeventServiceControlReleaseService,
+			testeventServiceControlOffServiceSelfCheck,
+			-9,
+		}
+		serviceController.validate_eventSequence(t, st)
+	})
 }
