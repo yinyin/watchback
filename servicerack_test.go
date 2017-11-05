@@ -242,15 +242,16 @@ func TestServiceTimingConfig_CopyFrom(t *testing.T) {
 
 func TestServiceRack_AddNode_1normal(t *testing.T) {
 	serviceRack := newServiceRack(2, nil, newDefaultServiceTimingConfigForTest_1())
-	node1, err1 := serviceRack.AddNode(1, newMockNodeMessagerNoop(1), newDefaultNodeMessengingTimingConfigForTest_0())
+	nodeMsgTimingCfg := newDefaultNodeMessengingTimingConfigForTest_0()
+	node1, err1 := serviceRack.AddNode(1, newMockNodeMessagerNoop(1), nodeMsgTimingCfg)
 	validate_ServiceRack_AddNode_result(t, 1, false, node1, err1)
-	node2, err2 := serviceRack.AddNode(2, newMockNodeMessagerNoop(2), newDefaultNodeMessengingTimingConfigForTest_0())
+	node2, err2 := serviceRack.AddNode(2, newMockNodeMessagerNoop(2), nodeMsgTimingCfg)
 	validate_ServiceRack_AddNode_result(t, -1, false, node2, err2)
-	node3, err3 := serviceRack.AddNode(3, newMockNodeMessagerNoop(3), newDefaultNodeMessengingTimingConfigForTest_0())
+	node3, err3 := serviceRack.AddNode(3, newMockNodeMessagerNoop(3), nodeMsgTimingCfg)
 	validate_ServiceRack_AddNode_result(t, 3, false, node3, err3)
-	node3dup, err3dup := serviceRack.AddNode(3, newMockNodeMessagerNoop(3), newDefaultNodeMessengingTimingConfigForTest_0())
+	node3dup, err3dup := serviceRack.AddNode(3, newMockNodeMessagerNoop(3), nodeMsgTimingCfg)
 	validate_ServiceRack_AddNode_result(t, -1, true, node3dup, err3dup)
-	node2dup, err2dup := serviceRack.AddNode(2, newMockNodeMessagerNoop(2), newDefaultNodeMessengingTimingConfigForTest_0())
+	node2dup, err2dup := serviceRack.AddNode(2, newMockNodeMessagerNoop(2), nodeMsgTimingCfg)
 	validate_ServiceRack_AddNode_result(t, -1, true, node2dup, err2dup)
 	// check state of ServiceRack
 	validate_ServiceRack_nodeCount(t, serviceRack, 1, 2)
@@ -330,18 +331,19 @@ func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
 func TestServiceRack_nodeLoopStartStop(t *testing.T) {
 	var err error
 	serviceRack := newServiceRack(2, nil, newDefaultServiceTimingConfigForTest_1())
+	nodeMsgTimingCfg := newDefaultNodeMessengingTimingConfigForTest_1()
 	nc1 := newMockNodeMessagerClock(1)
-	_, err = serviceRack.AddNode(1, nc1, newDefaultNodeMessengingTimingConfigForTest_1())
+	_, err = serviceRack.AddNode(1, nc1, nodeMsgTimingCfg)
 	if nil != err {
 		t.Errorf("cannot add node 1 to service rack: %v", err)
 	}
 	nc2 := newMockNodeMessagerClock(2)
-	_, err = serviceRack.AddNode(2, nc2, newDefaultNodeMessengingTimingConfigForTest_1())
+	_, err = serviceRack.AddNode(2, nc2, nodeMsgTimingCfg)
 	if nil != err {
 		t.Errorf("cannot add node 2 to service rack: $v", err)
 	}
 	nc3 := newMockNodeMessagerClock(3)
-	_, err = serviceRack.AddNode(3, nc3, newDefaultNodeMessengingTimingConfigForTest_1())
+	_, err = serviceRack.AddNode(3, nc3, nodeMsgTimingCfg)
 	if nil != err {
 		t.Errorf("cannot add node 3 to service rack: %v", err)
 	}
