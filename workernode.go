@@ -29,6 +29,19 @@ func (c * workerServiceActivationApprovalCallable) requestServiceActivationAppro
 	return nil
 }
 
+type NodeMessagingTimingConfig struct {
+	flexOnServiceCheckPeriod             time.Duration
+
+	expectOnServiceQueryWithin           time.Duration
+	expectServiceActivationRequestWithin time.Duration
+	expectMessengerCloseWithin           time.Duration
+}
+
+func (c * NodeMessagingTimingConfig) copyFrom(other * NodeMessagingTimingConfig) {
+	*c = *other
+}
+
+
 type WorkerNode struct {
 	nodeId    int32
 	messenger NodeMessagingAdapter
@@ -36,26 +49,18 @@ type WorkerNode struct {
 	serviceOn       availabilityLogic
 	messagingRunner callableBundleRunner
 
-	flexOnServiceCheckPeriod             time.Duration
-	expectOnServiceQueryWithin           time.Duration
-	expectServiceActivationRequestWithin time.Duration
-	expectMessengerCloseWithin           time.Duration
+	messagingTimingConfig NodeMessagingTimingConfig
 }
 
-func newWorkerNode(nodeId int32, messenger NodeMessagingAdapter,
-	flexOnServiceCheckPeriod,
-	expectOnServiceQueryWithin, expectServiceActivationRequestWithin,
-	expectMessengerCloseWithin time.Duration) (workerNode *WorkerNode) {
-	return &WorkerNode{
-		nodeId:                               nodeId,
-		messenger:                            messenger,
-		serviceOn:                            newAvailabilityLogic(),
-		messagingRunner:                      newCallableBundleRunner(1),
-		flexOnServiceCheckPeriod:             flexOnServiceCheckPeriod,
-		expectOnServiceQueryWithin:           expectOnServiceQueryWithin,
-		expectServiceActivationRequestWithin: expectServiceActivationRequestWithin,
-		expectMessengerCloseWithin:           expectMessengerCloseWithin,
+func newWorkerNode(nodeId int32, messenger NodeMessagingAdapter, messagingTimingConfig *NodeMessagingTimingConfig) (workerNode *WorkerNode) {
+	workerNode = &WorkerNode{
+		nodeId:          nodeId,
+		messenger:       messenger,
+		serviceOn:       newAvailabilityLogic(),
+		messagingRunner: newCallableBundleRunner(1),
 	}
+	workerNode.messagingTimingConfig.copyFrom(messagingTimingConfig)
+	return workerNode
 }
 
 func (n *WorkerNode) NodeId() (nodeId int32) {
@@ -63,7 +68,7 @@ func (n *WorkerNode) NodeId() (nodeId int32) {
 }
 
 func (n *WorkerNode) Close() {
-	c, cancel, err := n.messagingRunner.AddCallableWithTimeout(n.messenger.Close, n.expectMessengerCloseWithin)
+	c, cancel, err := n.messagingRunner.AddCallableWithTimeout(n.messenger.Close, n.messagingTimingConfig.expectMessengerCloseWithin)
 	if nil != err {
 		log.Printf("WARN: cannot invoke Close() of messenger (nodeId=%v): %v", n.nodeId, err)
 	} else {
@@ -102,7 +107,7 @@ func (n *WorkerNode) requestIsOnServiceCheck(ctx context.Context) (err error) {
 		return err
 	}
 	if onService {
-		n.serviceOn.AvailableWithin(n.flexOnServiceCheckPeriod)
+		n.serviceOn.AvailableWithin(n.messagingTimingConfig.flexOnServiceCheckPeriod)
 	} else {
 		select {
 		case <-ctx.Done():
@@ -114,7 +119,7 @@ func (n *WorkerNode) requestIsOnServiceCheck(ctx context.Context) (err error) {
 }
 
 func (n *WorkerNode) IsOnService() (running bool, err error) {
-	err = n.invokeMessagingOperation("IsOnService", n.requestIsOnServiceCheck, n.expectOnServiceQueryWithin)
+	err = n.invokeMessagingOperation("IsOnService", n.requestIsOnServiceCheck, n.messagingTimingConfig.expectOnServiceQueryWithin)
 	return n.serviceOn.Availability(), err
 }
 
@@ -124,7 +129,7 @@ func (n *WorkerNode) RequestServiceActivationApproval(localNodeId int32, forceAc
 		localNodeId: localNodeId,
 		forceActivation: forceActivation,
 	}
-	err = n.invokeMessagingOperation("RequestServiceActivationApproval", callable.requestServiceActivationApproval, n.expectServiceActivationRequestWithin)
+	err = n.invokeMessagingOperation("RequestServiceActivationApproval", callable.requestServiceActivationApproval, n.messagingTimingConfig.expectServiceActivationRequestWithin)
 	if nil == err {
 		return callable.isApproved, nil
 	}

@@ -8,8 +8,35 @@ import (
 	"log"
 )
 
+func newDefaultNodeMessengingTimingConfigForTest_0() (cfg *NodeMessagingTimingConfig) {
+	return &NodeMessagingTimingConfig {
+		flexOnServiceCheckPeriod: 0,
+		expectOnServiceQueryWithin: 0,
+		expectServiceActivationRequestWithin: 0,
+		expectMessengerCloseWithin: 0,
+	}
+}
+
+func newDefaultNodeMessengingTimingConfigForTest_1() (cfg *NodeMessagingTimingConfig) {
+	return &NodeMessagingTimingConfig {
+		flexOnServiceCheckPeriod: time.Second,
+		expectOnServiceQueryWithin: time.Second,
+		expectServiceActivationRequestWithin: time.Second,
+		expectMessengerCloseWithin: time.Second,
+	}
+}
+
+func newDefaultNodeMessengingTimingConfigForTest_2() (cfg *NodeMessagingTimingConfig) {
+	return &NodeMessagingTimingConfig {
+		flexOnServiceCheckPeriod: time.Second+(maxNodeMessagingOperationAttempt*(ExpiredCallableResultCollectPeriod+time.Second)),
+		expectOnServiceQueryWithin: time.Second,
+		expectServiceActivationRequestWithin: time.Second,
+		expectMessengerCloseWithin: time.Second,
+	}
+}
+
 func TestWorkerNode_NodeId(t *testing.T) {
-	n := newWorkerNode(3, nil, 0, 0, 0, 0)
+	n := newWorkerNode(3, nil, newDefaultNodeMessengingTimingConfigForTest_0())
 	if nodeId := n.NodeId(); 3 != nodeId {
 		t.Errorf("unexpected node id: %v", nodeId)
 	}
@@ -52,7 +79,7 @@ func (m *mockNodeMessagingAdapter_AllError) Close(ctx context.Context) (err erro
 
 func TestWorkerNode_IsOnService_allError1(t *testing.T) {
 	mock := newMockNodeMessagingAdapter_AllError("allerror-1")
-	n := newWorkerNode(3, mock, time.Second, time.Second, time.Second, time.Second)
+	n := newWorkerNode(3, mock, newDefaultNodeMessengingTimingConfigForTest_1())
 	go n.RunMessagingLoop()
 	running, err := n.IsOnService()
 	if ErrExceedMaxWorkerNodeMessagingOperationAttempt != err {
@@ -146,7 +173,7 @@ func validate_IsOnService(t *testing.T, n * WorkerNode, t0 time.Time, stepName s
 
 func TestWorkerNode_IsOnService_c1a(t *testing.T) {
 	mock := newMockNodeMessagingAdapter_C1()
-	n := newWorkerNode(3, mock, time.Second+(maxNodeMessagingOperationAttempt*(ExpiredCallableResultCollectPeriod+time.Second)), time.Second, time.Second, time.Second)
+	n := newWorkerNode(3, mock, newDefaultNodeMessengingTimingConfigForTest_2())
 	go n.RunMessagingLoop()
 	defer n.Close()
 	t0 := time.Now()
@@ -196,7 +223,7 @@ func validate_RequestServiceActivationApproval(t *testing.T, n * WorkerNode, moc
 
 func TestWorkerNode_RequestServiceActivationApproval_c1a(t *testing.T) {
 	mock := newMockNodeMessagingAdapter_C1()
-	n := newWorkerNode(3, mock, time.Second+(maxNodeMessagingOperationAttempt*(ExpiredCallableResultCollectPeriod+time.Second)), time.Second, time.Second, time.Second)
+	n := newWorkerNode(3, mock, newDefaultNodeMessengingTimingConfigForTest_2())
 	go n.RunMessagingLoop()
 	defer n.Close()
 	validate_RequestServiceActivationApproval(t, n, mock,  "RequestServiceActivationApproval-1-success",0, 2, false, true, false, false)

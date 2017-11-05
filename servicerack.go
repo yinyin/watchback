@@ -75,8 +75,7 @@ func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter, 
 	return serviceRack
 }
 
-func (x * ServiceRack) AddNode(nodeId int32, messenger NodeMessagingAdapter,
-	flexOnServiceCheckPeriod, expectOnServiceQueryWithin, expectServiceActivationRequestWithin, expectMessengerCloseWithin time.Duration) (workerNode * WorkerNode, err error) {
+func (x * ServiceRack) AddNode(nodeId int32, messenger NodeMessagingAdapter, messagingTimingConfig *NodeMessagingTimingConfig) (workerNode * WorkerNode, err error) {
 	if nodeId == x.localNodeId {
 		if x.frontNodesReady {
 			return nil, fmt.Errorf("duplicated local node: id=%v", nodeId)
@@ -89,8 +88,7 @@ func (x * ServiceRack) AddNode(nodeId int32, messenger NodeMessagingAdapter,
 			return nil, fmt.Errorf("duplicated node: id=%v", nodeId)
 		}
 	}
-	workerNode = newWorkerNode(nodeId, messenger,
-		flexOnServiceCheckPeriod, expectOnServiceQueryWithin, expectServiceActivationRequestWithin, expectMessengerCloseWithin)
+	workerNode = newWorkerNode(nodeId, messenger, messagingTimingConfig)
 	if !x.frontNodesReady {
 		x.frontNodes = append(x.frontNodes, workerNode)
 	}
