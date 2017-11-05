@@ -10,12 +10,15 @@ import (
 
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
 
+var EmptyServiceControllerStandbyPeriod = time.Minute * 10
+
 type ServiceTimingConfig struct {
 	AcceptablePreparePeriod             time.Duration
 	AcceptableOnServiceSelfCheckPeriod  time.Duration
 	AcceptableOffServiceSelfCheckPeriod time.Duration
 	AcceptableServiceActivationPeriod   time.Duration
 	AcceptableServiceReleasingPeriod    time.Duration
+	AcceptableControllerClosePeriod time.Duration
 
 	AcceptableOnServiceSelfCheckFailurePeriod  time.Duration
 	AcceptableOffServiceSelfCheckFailurePeriod time.Duration
@@ -303,6 +306,44 @@ func (x * ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfte
 	return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
 }
 
+func (x * ServiceRack) runEmptyServiceControllerStandby() (nextHandler stateHandler, invokeAfter time.Duration) {
+	if nil !=  x.serviceController {
+		log.Printf("INFO: service controller is not empty, leaving standby loop.")
+		return x.runOffServiceSelfCheck, 0
+	} else {
+		log.Printf("INFO: service controller is empty")
+	}
+	return x.runEmptyServiceControllerStandby, EmptyServiceControllerStandbyPeriod
+}
+
+func (x * ServiceRack) runCloseServiceController() (nextHandler stateHandler, invokeAfter time.Duration) {
+	if nil ==  x.serviceController {
+		log.Printf("WARN: empty service controller (runCloseServiceController)")
+		return x.runEmptyServiceControllerStandby, 0
+	}
+	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.Close, x.timingConfig.AcceptableControllerClosePeriod)
+	if nil != err {
+		log.Printf("ERR: failed on invoke Close: %v", err)
+	} else {
+		defer cancel()
+		err = <-c
+		if nil != err {
+			log.Printf("WARN: failed on closing service controller: %v", err)
+		}
+		x.availability.Reset()
+	}
+	return x.runEmptyServiceControllerStandby, 0
+}
+
+
+func (x * ServiceRack) stopService() {
+	if true == x.servicing.Load() {
+		x.stateTransit.AppendDetour(func() {
+			x.runServiceRelease()
+		})
+	}
+}
+
 // Answers service activation requests from remote peers.
 func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActivation bool) (accept bool) {
 	if true == x.serviceActivating.Load() {
@@ -316,15 +357,15 @@ func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiv
 			return false
 		}
 	}
-	if true == x.servicing.Load() {
-		x.stateTransit.AppendDetour(func() {
-			x.runServiceRelease()
-		})
-	}
+	x.stopService()
 	return true
 }
 
 func (x * ServiceRack) Close() {
+	x.stopService()
+	x.stateTransit.AppendDetour(func() {
+		x.runCloseServiceController();
+	})
 	x.stateTransit.Stop()
 }
 

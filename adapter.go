@@ -45,20 +45,6 @@ type ServiceControlAdapter interface {
 	// Releasing service
 	ReleaseService(ctx context.Context) (err error)
 
-
-	// Perform initialize. Service rack status is ready before calling this function.
-	// Return value will be logged and treated as self-check result.
-	Bootup() (err error)
-
-	// Perform self-check to see if local environment is good for running service.
-	// Return nil if passed self-check.
-	// Return error if failed on self-check.
-	PreAcquireSelfCheck() (err error)
-
-	// Perform self-check to see if running service is good.
-	PostAcquireSelfCheck() (err error)
-
-
 	// Release resources allocated by this service adapter
-	Close() (err error)
+	Close(ctx context.Context) (err error)
 }
