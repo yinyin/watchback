@@ -47,7 +47,7 @@ func validate_Advices(t *testing.T, expectation map[string]bool, advices []strin
 	}
 	for adv, result := range expectation {
 		if false == result {
-			t.Errorf("expecting to have %v as one of advices", adv)
+			t.Errorf("expecting to have \"%v\" as one of advices", adv)
 		}
 	}
 	if len(unexpected) > 0 {
