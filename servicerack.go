@@ -11,6 +11,7 @@ import (
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
 var ErrCannotConcurServiceActivation = errors.New("rejected by peer node on concur service activation")
 var ErrFailedOnServiceActivatingProcess = errors.New("failed on running service activating process")
+var ErrTakeOverTimeout = errors.New("time-out on service take over")
 
 var EmptyServiceControllerStandbyPeriod = time.Minute * 10
 
@@ -181,6 +182,9 @@ func (x * ServiceRack) concurServiceActivation(forceActivation bool) (success bo
 // Activate service and return success state.
 // This method does not check current servicing status. Must NOT invoke if service is running already.
 func (x * ServiceRack) activateService(forceActivation bool) (err error) {
+	if true == x.servicing.Load() {
+		return nil	// already running service
+	}
 	x.serviceActivating.Store(true)
 	defer x.serviceActivating.Store(false)
 	if false == x.concurServiceActivation(forceActivation) {
@@ -264,6 +268,9 @@ func (x * ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invoke
 }
 
 func (x * ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
+	if true == x.servicing.Load() {
+		return x.runOnServiceSelfCheck()
+	}
 	defer x.renewLastSelfCheckTimeStamp()
 	if x.externalOverrideAvailable.Availability() {
 		log.Printf("WARN: external overrided, skip self check.")
@@ -304,10 +311,11 @@ func (x * ServiceRack) runFrontNodeCheck() (nextHandler stateHandler, invokeAfte
 }
 
 func (x * ServiceRack) runServiceActivation() (nextHandler stateHandler, invokeAfter time.Duration) {
-	if nil == x.activateService(false) {
-		return x.runOnServiceSelfCheck, x.durationToNextOnServiceSelfCheck()
-	}
-	return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()	// failed service activation, continue off-service checks
+	if err := x.activateService(false); nil != err {
+		log.Printf("ERR: failed service activation, continue off-service checks: %v", err)
+		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
+		}
+	return x.runOnServiceSelfCheck, x.durationToNextOnServiceSelfCheck()
 }
 
 func (x * ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter time.Duration) {
@@ -358,6 +366,26 @@ func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiv
 	}
 	x.stopService()
 	return true
+}
+
+func (x * ServiceRack) ServiceTakeOver() (err error) {
+	if true == x.servicing.Load() {
+		log.Printf("INFO: ignoring service take over: service already running.")
+		return nil
+	}
+	if true == x.serviceActivating.Load() {
+		log.Printf("INFO: ignoring service take over: service activation in progress.")
+		return nil
+	}
+	ch := make(chan error, 1)
+	x.stateTransit.AppendDetour(func() {
+		ch <- x.activateService(true)
+	})
+	select {
+	case err := <-ch:
+		return err
+	}
+	return ErrTakeOverTimeout
 }
 
 func (x * ServiceRack) Close() {

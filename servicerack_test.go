@@ -792,3 +792,74 @@ func TestServiceRack_StateTransitionLoop_flowNormal(t *testing.T) {
 		serviceController.validate_eventSequence(t, st)
 	})
 }
+
+func TestServiceRack_StateTransitionLoop_flowTakeOver(t *testing.T) {
+	serviceController, serviceRack, nm, teardownFunc := prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
+	defer teardownFunc()
+	t.Run("1-prepare", func(t *testing.T) {
+		var st = []int {
+			testeventServiceControlPrepare,
+			testeventServiceControlOffServiceSelfCheck,
+			-9,
+		}
+		serviceController.validate_eventSequence(t, st)
+	})
+	t.Run("2-check_1-is-on-service", func(t *testing.T) {
+		select {
+		case <-nm[0].tqueueIsOnService:
+		case <-nm[2].tqueueIsOnService:
+		case <-time.After(time.Second * 10):
+			t.Fatal("blocked at IsOnService stage.")
+		}
+	})
+	t.Run("2-check_reqserv-n1", func(t *testing.T) {
+		nm[0].expectRequestServiceActivationApproval(t)
+	})
+	t.Run("2-check_reqserv-n3", func(t *testing.T) {
+		nm[2].expectRequestServiceActivationApproval(t)
+	})
+	t.Run("3-activate", func(t *testing.T) {
+		var st = []int{
+			testeventServiceControlActivateService,
+			testeventServiceControlOnServiceSelfCheck,
+			testeventServiceControlOnServiceSelfCheck,
+			-9,
+		}
+		serviceController.validate_eventSequence(t, st)
+	})
+	t.Run("4-service", func(t *testing.T) {
+		if false == serviceRack.servicing.Load() {
+			t.Fatal("expect servicing flag on.")
+		}
+	})
+	t.Run("5-takeover-fail", func(t *testing.T) {
+		err := serviceRack.ServiceTakeOver()
+		if nil != err {
+			t.Fatalf("expect take over success: %v", err)
+		}
+		if false == serviceRack.servicing.Load() {
+			t.Fatal("expect servicing flag on.")
+		}
+	})
+	t.Run("6-req-activate", func(t *testing.T) {
+		accept := serviceRack.RequestServiceActivationApproval(1, true)
+		if false == accept {
+			t.Fatalf("expect request accept: %v", accept)
+		}
+		var st = []int {
+			testeventServiceControlReleaseService,
+			testeventServiceControlOffServiceSelfCheck,
+			-9,
+		}
+		serviceController.validate_eventSequence(t, st)
+	})
+	t.Run("7-takeover-ok", func(t *testing.T) {
+		err := serviceRack.ServiceTakeOver()
+		if nil != err {
+			t.Fatalf("expect take over success: %v", err)
+		}
+		if false == serviceRack.servicing.Load() {
+			t.Fatal("expect servicing flag on.")
+		}
+	})
+}
