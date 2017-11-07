@@ -253,7 +253,7 @@ func (x * ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invoke
 	if false == x.servicing.Load() {
 		return x.runOffServiceSelfCheck()
 	}
-	defer x.renewLastSelfCheckTimeStamp()
+	x.renewLastSelfCheckTimeStamp()
 	if nil ==  x.serviceController {
 		log.Printf("WARN: empty service controller (runOnServiceSelfCheck)")
 		return x.runOnServiceSelfCheck, x.durationToNextOnServiceSelfCheck()
@@ -276,7 +276,7 @@ func (x * ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invok
 	if true == x.servicing.Load() {
 		return x.runOnServiceSelfCheck()
 	}
-	defer x.renewLastSelfCheckTimeStamp()
+	x.renewLastSelfCheckTimeStamp()
 	if x.externalOverrideAvailable.Availability() {
 		log.Printf("WARN: external overrided, skip self check.")
 		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
