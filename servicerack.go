@@ -374,14 +374,6 @@ func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiv
 }
 
 func (x * ServiceRack) ServiceTakeOver() (err error) {
-	if true == x.servicing.Load() {
-		log.Printf("INFO: ignoring service take over: service already running.")
-		return nil
-	}
-	if true == x.serviceActivating.Load() {
-		log.Printf("INFO: ignoring service take over: service activation in progress.")
-		return nil
-	}
 	ch := make(chan error, 1)
 	x.stateTransit.AppendDetour(func() {
 		ch <- x.activateService(true)
