@@ -42,6 +42,76 @@ func (c *ServiceTimingConfig) copyFrom(other *ServiceTimingConfig) {
 	*c = *other
 }
 
+const AdviceAcceptablePreparePeriodTooShort = "Acceptable prepare operation period might too short (< 1ms)"
+const AdviceAcceptableOnServiceSelfCheckPeriodTooShort = "Acceptable on-service self check operation period might too short (< 1ms)"
+const AdviceAcceptableOffServiceSelfCheckPeriodTooShort = "Acceptable off-service self check period might too short (< 1ms)"
+const AdviceAcceptableServiceActivationPeriodTooShort = "Acceptable service activating operation period might too short (< 1ms)"
+const AdviceAcceptableServiceReleasingPeriodTooShort = "Acceptable service releasing operation period might too short (< 1ms)"
+const AdviceAcceptableControllerClosePeriodTooShort = "Acceptable controller closing operation period might too short (< 1ns)"
+const AdviceAcceptableOnServiceSelfCheckFailurePeriodShorterThanOperation = "Acceptable on-service failure period shorter than acceptable operation time"
+const AdviceAcceptableOffServiceSelfCheckFailurePeriodShorterThanOperation = "Acceptable off-service failure period shorter than acceptable operation time"
+const AdviceOnServiceSelfCheckPeriodShorterThanOperation = "On-service self check period shorter than check operation might need"
+const AdviceOffServiceSelfCheckPeriodShorterThanOperation = "Off-service self check period shorter than check operation might need"
+const AdviceServiceActivationSuccessExemptionPeriodShorterThanCheck = "Exemption period of successful service activation shorter than self check period"
+const AdviceServiceActivationFailureBlackoutPeriodShorterThanCheckAndActivateOperation = "Blackout period of failed service activation shorter than sum of service check period and service activation time"
+const AdviceServiceReleaseSuccessBlackoutPeriodShorterThanCheckAndActivateOperation = "Blackout period for successful service releasing shorter than sum of service check period and service activation time"
+const AdviceServiceReleaseFailureBlackoutPeriodShorterThanCheckAndActivateOperation = "Blackout period for failed service releasing shorter than sum of service check period and service activation time"
+
+func (c *ServiceTimingConfig)  Advice() (advices []string) {
+	advices = make([]string, 0)
+
+	if c.AcceptablePreparePeriod        < time.Millisecond {
+		advices = append(advices, AdviceAcceptablePreparePeriodTooShort)
+	}
+	if c.AcceptableOnServiceSelfCheckPeriod        < time.Millisecond {
+		advices = append(advices, AdviceAcceptableOnServiceSelfCheckPeriodTooShort)
+	}
+	if c.AcceptableOffServiceSelfCheckPeriod        < time.Millisecond {
+		advices = append(advices, AdviceAcceptableOffServiceSelfCheckPeriodTooShort)
+	}
+	if c.AcceptableServiceActivationPeriod        < time.Millisecond {
+		advices = append(advices, AdviceAcceptableServiceActivationPeriodTooShort)
+	}
+	if c.AcceptableServiceReleasingPeriod        < time.Millisecond {
+		advices = append(advices, AdviceAcceptableServiceReleasingPeriodTooShort)
+	}
+	if c.AcceptableControllerClosePeriod        < time.Nanosecond {
+		advices = append(advices, AdviceAcceptableControllerClosePeriodTooShort)
+	}
+	if c.AcceptableOnServiceSelfCheckFailurePeriod  < c.AcceptableOnServiceSelfCheckPeriod {
+		advices = append(advices, AdviceAcceptableOnServiceSelfCheckFailurePeriodShorterThanOperation)
+	}
+	if c.AcceptableOffServiceSelfCheckFailurePeriod  < c.AcceptableOffServiceSelfCheckPeriod {
+		advices = append(advices, AdviceAcceptableOffServiceSelfCheckFailurePeriodShorterThanOperation)
+	}
+	if c.OnServiceSelfCheckPeriod < c.AcceptableOnServiceSelfCheckPeriod {
+		advices = append(advices, AdviceOnServiceSelfCheckPeriodShorterThanOperation)
+	}
+	if c.OffServiceSelfCheckPeriod < c.AcceptableOffServiceSelfCheckPeriod {
+		advices = append(advices, AdviceOffServiceSelfCheckPeriodShorterThanOperation)
+	}
+	var largerSelfCheckPeriod time.Duration
+	if c.OnServiceSelfCheckPeriod > c.OffServiceSelfCheckPeriod {
+		largerSelfCheckPeriod=c.OnServiceSelfCheckPeriod
+	} else {
+		largerSelfCheckPeriod=c.OffServiceSelfCheckPeriod
+	}
+	if c.ServiceActivationSuccessExemptionPeriod < largerSelfCheckPeriod {
+		advices = append(advices, AdviceServiceActivationSuccessExemptionPeriodShorterThanCheck)
+	}
+	expectServiceActivationCycleTime := largerSelfCheckPeriod + c.AcceptableServiceActivationPeriod
+	if c.ServiceActivationFailureBlackoutPeriod < expectServiceActivationCycleTime {
+		advices = append(advices, AdviceServiceActivationFailureBlackoutPeriodShorterThanCheckAndActivateOperation)
+	}
+	if c.ServiceReleaseSuccessBlackoutPeriod < expectServiceActivationCycleTime {
+		advices = append(advices, AdviceServiceReleaseSuccessBlackoutPeriodShorterThanCheckAndActivateOperation)
+	}
+	if c.ServiceReleaseFailureBlackoutPeriod < expectServiceActivationCycleTime {
+		advices = append(advices, AdviceServiceReleaseFailureBlackoutPeriodShorterThanCheckAndActivateOperation)
+	}
+	return advices
+}
+
 type ServiceRack struct {
 	localNodeId       int32
 	serviceController ServiceControlAdapter
