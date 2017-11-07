@@ -385,6 +385,15 @@ func (x * ServiceRack) ServiceTakeOver() (err error) {
 	return ErrTakeOverTimeout
 }
 
+// Answers service status query requests from remote peers.
+// Intent to be invoke by service communication adapter
+func (x * ServiceRack) IsOnService() (onService bool) {
+	if x.servicing.Load() && x.availability.Availability() {
+		return true
+	}
+	return false
+}
+
 func (x * ServiceRack) Close() {
 	x.stopService()
 	x.stateTransit.AppendDetour(func() {

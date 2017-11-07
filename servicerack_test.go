@@ -190,6 +190,7 @@ func newDefaultServiceTimingConfigForTest_P1() (cfg * ServiceTimingConfig) {
 		OnServiceSelfCheckPeriod  : time.Second * 3,
 		OffServiceSelfCheckPeriod : time.Second * 3,
 
+		ServiceActivationSuccessExemptionPeriod: time.Second * 3,
 		ServiceActivationFailureBlackoutPeriod : time.Second * 10,
 		ServiceReleaseSuccessBlackoutPeriod    : time.Second * 10,
 		ServiceReleaseFailureBlackoutPeriod: time.Second * 10,
@@ -772,6 +773,9 @@ func TestServiceRack_StateTransitionLoop_flowNormal(t *testing.T) {
 		if false == serviceRack.servicing.Load() {
 			t.Fatal("expect servicing flag on.")
 		}
+		if false == serviceRack.IsOnService() {
+			t.Fatal("expect servicing check pass.")
+		}
 	})
 	t.Run("5-req-activate", func(t *testing.T) {
 		accept := serviceRack.RequestServiceActivationApproval(1, false)
@@ -837,8 +841,16 @@ func TestServiceRack_StateTransitionLoop_flowTakeOver(t *testing.T) {
 		if nil != err {
 			t.Fatalf("expect take over success: %v", err)
 		}
+		var st = []int {
+			testeventServiceControlOnServiceSelfCheck,
+			-9,
+		}
+		serviceController.validate_eventSequence(t, st)
 		if false == serviceRack.servicing.Load() {
 			t.Fatal("expect servicing flag on.")
+		}
+		if false == serviceRack.IsOnService() {
+			t.Fatal("expect servicing check pass.")
 		}
 	})
 	t.Run("6-req-activate", func(t *testing.T) {
@@ -860,6 +872,9 @@ func TestServiceRack_StateTransitionLoop_flowTakeOver(t *testing.T) {
 		}
 		if false == serviceRack.servicing.Load() {
 			t.Fatal("expect servicing flag on.")
+		}
+		if false == serviceRack.IsOnService() {
+			t.Fatal("expect servicing check pass.")
 		}
 	})
 }
