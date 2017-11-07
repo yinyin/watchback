@@ -13,14 +13,14 @@ var ErrExceedMaxWorkerNodeMessagingOperationAttempt = errors.New("exceed max nod
 
 // Callable content for performing ServiceActivationApproval request
 type workerServiceActivationApprovalCallable struct {
-	messenger NodeMessagingAdapter
-	localNodeId int32
+	messenger       NodeMessagingAdapter
+	localNodeId     int32
 	forceActivation bool
-	isApproved bool
+	isApproved      bool
 }
 
-func (c * workerServiceActivationApprovalCallable) requestServiceActivationApproval(ctx context.Context) (err error) {
-	c.isApproved=false
+func (c *workerServiceActivationApprovalCallable) requestServiceActivationApproval(ctx context.Context) (err error) {
+	c.isApproved = false
 	isApproved, err := c.messenger.RequestServiceActivationApproval(ctx, c.localNodeId, c.forceActivation)
 	if nil != err {
 		return err
@@ -37,7 +37,7 @@ type NodeMessagingTimingConfig struct {
 	ExpectMessengerCloseWithin           time.Duration // time-out duration for closing node messenger
 }
 
-func (c * NodeMessagingTimingConfig) copyFrom(other * NodeMessagingTimingConfig) {
+func (c *NodeMessagingTimingConfig) copyFrom(other *NodeMessagingTimingConfig) {
 	*c = *other
 }
 
@@ -48,7 +48,7 @@ const AdviceNodeMessagingTimingExpectMessengerCloseWithinTooSmall = "Expected du
 const AdviceNodeMessagingTimingFlexOnServiceCheckLessThanExpectOnServiceQuery = "Flex check period for on service check less than on service query"
 const AdviceNodeMessagingTimingFlexOnServiceCheckLessThanSamllestMessagingFailureDuration = "Flex check period for on service check less than smallest messaging failure duration (< MAX_RETRY * (EXPIRE_COLLECT_PERIOD + EXPECT_ON_SERVICE_QUERY))"
 
-func (c * NodeMessagingTimingConfig) Advice() (advices []string) {
+func (c *NodeMessagingTimingConfig) Advice() (advices []string) {
 	advices = make([]string, 0)
 	if c.FlexOnServiceCheckPeriod < time.Millisecond {
 		advices = append(advices, AdviceNodeMessagingTimingFlexOnServiceCheckPeriodTooSmall)
@@ -154,9 +154,9 @@ func (n *WorkerNode) IsOnService() (running bool, err error) {
 }
 
 func (n *WorkerNode) RequestServiceActivationApproval(localNodeId int32, forceActivation bool) (isApproved bool, err error) {
-	callable := workerServiceActivationApprovalCallable {
-		messenger: n.messenger,
-		localNodeId: localNodeId,
+	callable := workerServiceActivationApprovalCallable{
+		messenger:       n.messenger,
+		localNodeId:     localNodeId,
 		forceActivation: forceActivation,
 	}
 	err = n.invokeMessagingOperation("RequestServiceActivationApproval", callable.requestServiceActivationApproval, n.messagingTimingConfig.ExpectServiceActivationRequestWithin)

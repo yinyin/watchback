@@ -1,8 +1,8 @@
 package watchback
 
 import (
-	"testing"
 	"context"
+	"testing"
 	"time"
 )
 
@@ -11,23 +11,23 @@ type mockNodeMessagerNoop struct {
 	nodeId int32
 }
 
-func (m * mockNodeMessagerNoop) HasMessagingFailure(err error) {
+func (m *mockNodeMessagerNoop) HasMessagingFailure(err error) {
 }
 
-func (m * mockNodeMessagerNoop) IsOnService(ctx context.Context) (onService bool, err error) {
+func (m *mockNodeMessagerNoop) IsOnService(ctx context.Context) (onService bool, err error) {
 	return false, nil
 }
 
-func (m * mockNodeMessagerNoop) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
+func (m *mockNodeMessagerNoop) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
 	return true, nil
 }
 
-func (m * mockNodeMessagerNoop) Close(ctx context.Context) (err error) {
+func (m *mockNodeMessagerNoop) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func newMockNodeMessagerNoop(nodeId int32) (m * mockNodeMessagerNoop) {
-	return &mockNodeMessagerNoop {
+func newMockNodeMessagerNoop(nodeId int32) (m *mockNodeMessagerNoop) {
+	return &mockNodeMessagerNoop{
 		nodeId: nodeId,
 	}
 }
@@ -36,38 +36,38 @@ func newMockNodeMessagerNoop(nodeId int32) (m * mockNodeMessagerNoop) {
 type mockNodeMessagerClock struct {
 	nodeId int32
 
-	lastHasMessagingFailureAt time.Time
-	lastIsOnService time.Time
+	lastHasMessagingFailureAt            time.Time
+	lastIsOnService                      time.Time
 	lastRequestServiceActivationApproval time.Time
-	lastClose time.Time
+	lastClose                            time.Time
 }
 
-func (m * mockNodeMessagerClock) HasMessagingFailure(err error) {
+func (m *mockNodeMessagerClock) HasMessagingFailure(err error) {
 	m.lastHasMessagingFailureAt = time.Now()
 }
 
-func (m * mockNodeMessagerClock) IsOnService(ctx context.Context) (onService bool, err error) {
+func (m *mockNodeMessagerClock) IsOnService(ctx context.Context) (onService bool, err error) {
 	m.lastIsOnService = time.Now()
 	return false, nil
 }
 
-func (m * mockNodeMessagerClock) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
+func (m *mockNodeMessagerClock) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
 	m.lastRequestServiceActivationApproval = time.Now()
 	return true, nil
 }
 
-func (m * mockNodeMessagerClock) Close(ctx context.Context) (err error) {
+func (m *mockNodeMessagerClock) Close(ctx context.Context) (err error) {
 	m.lastClose = time.Now()
 	return nil
 }
 
-func newMockNodeMessagerClock(nodeId int32) (m * mockNodeMessagerClock) {
-	return &mockNodeMessagerClock {
+func newMockNodeMessagerClock(nodeId int32) (m *mockNodeMessagerClock) {
+	return &mockNodeMessagerClock{
 		nodeId: nodeId,
 	}
 }
 
-func validate_ServiceRack_AddNode_result(t *testing.T, expNodeId int32, expError bool, workerNode * WorkerNode, resultErr error) {
+func validate_ServiceRack_AddNode_result(t *testing.T, expNodeId int32, expError bool, workerNode *WorkerNode, resultErr error) {
 	// validate Node-Id and Messenger
 	if expNodeId < 0 {
 		if workerNode != nil {
@@ -81,7 +81,7 @@ func validate_ServiceRack_AddNode_result(t *testing.T, expNodeId int32, expError
 		}
 		if nil == workerNode.messenger {
 			t.Errorf("expect to have WorkerNode NodeId=%v with given messenger but messenger is losted.", expNodeId)
-		} else if resultMessenger, ok := workerNode.messenger.(* mockNodeMessagerNoop); false == ok {
+		} else if resultMessenger, ok := workerNode.messenger.(*mockNodeMessagerNoop); false == ok {
 			t.Errorf("cannot cast messenger to mock type: NodeId=%v", expNodeId)
 		} else if nil != resultMessenger {
 			if expNodeId != resultMessenger.nodeId {
@@ -101,7 +101,7 @@ func validate_ServiceRack_AddNode_result(t *testing.T, expNodeId int32, expError
 	}
 }
 
-func validate_ServiceRack_nodeCount(t *testing.T, serviceRack * ServiceRack, frontNodeCount int, allNodeCount int) {
+func validate_ServiceRack_nodeCount(t *testing.T, serviceRack *ServiceRack, frontNodeCount int, allNodeCount int) {
 	frontLen := len(serviceRack.frontNodes)
 	if frontNodeCount != frontLen {
 		t.Errorf("expect front node count %v but having %v", frontNodeCount, frontLen)
@@ -112,93 +112,92 @@ func validate_ServiceRack_nodeCount(t *testing.T, serviceRack * ServiceRack, fro
 	}
 }
 
-func newDefaultServiceTimingConfigForTest_1() (cfg * ServiceTimingConfig) {
-	return &ServiceTimingConfig {
-		AcceptablePreparePeriod: time.Second,
-		AcceptableOnServiceSelfCheckPeriod: time.Second,
+func newDefaultServiceTimingConfigForTest_1() (cfg *ServiceTimingConfig) {
+	return &ServiceTimingConfig{
+		AcceptablePreparePeriod:             time.Second,
+		AcceptableOnServiceSelfCheckPeriod:  time.Second,
 		AcceptableOffServiceSelfCheckPeriod: time.Second,
-		AcceptableServiceActivationPeriod: time.Second,
-		AcceptableServiceReleasingPeriod   : time.Second,
+		AcceptableServiceActivationPeriod:   time.Second,
+		AcceptableServiceReleasingPeriod:    time.Second,
 
-		AcceptableOnServiceSelfCheckFailurePeriod  : time.Second,
-		AcceptableOffServiceSelfCheckFailurePeriod : time.Second,
-		AcceptableFrontNodeEmptyPeriod             : time.Second,
+		AcceptableOnServiceSelfCheckFailurePeriod:  time.Second,
+		AcceptableOffServiceSelfCheckFailurePeriod: time.Second,
+		AcceptableFrontNodeEmptyPeriod:             time.Second,
 
-		OnServiceSelfCheckPeriod  : time.Second,
-		OffServiceSelfCheckPeriod : time.Second,
+		OnServiceSelfCheckPeriod:  time.Second,
+		OffServiceSelfCheckPeriod: time.Second,
 
-		ServiceActivationFailureBlackoutPeriod : time.Second,
-		ServiceReleaseSuccessBlackoutPeriod    : time.Second,
-		ServiceReleaseFailureBlackoutPeriod: time.Second,
+		ServiceActivationFailureBlackoutPeriod: time.Second,
+		ServiceReleaseSuccessBlackoutPeriod:    time.Second,
+		ServiceReleaseFailureBlackoutPeriod:    time.Second,
 	}
 }
 
-func newDefaultServiceTimingConfigForTest_2() (cfg * ServiceTimingConfig) {
-	return &ServiceTimingConfig {
-		AcceptablePreparePeriod: time.Second * 3,
-		AcceptableOnServiceSelfCheckPeriod: time.Second * 4,
+func newDefaultServiceTimingConfigForTest_2() (cfg *ServiceTimingConfig) {
+	return &ServiceTimingConfig{
+		AcceptablePreparePeriod:             time.Second * 3,
+		AcceptableOnServiceSelfCheckPeriod:  time.Second * 4,
 		AcceptableOffServiceSelfCheckPeriod: time.Second * 5,
-		AcceptableServiceActivationPeriod: time.Second * 5,
-		AcceptableServiceReleasingPeriod   : time.Second * 7,
+		AcceptableServiceActivationPeriod:   time.Second * 5,
+		AcceptableServiceReleasingPeriod:    time.Second * 7,
 
-		AcceptableOnServiceSelfCheckFailurePeriod  : time.Second * 8,
-		AcceptableOffServiceSelfCheckFailurePeriod : time.Second * 9,
-		AcceptableFrontNodeEmptyPeriod             : time.Second * 10,
+		AcceptableOnServiceSelfCheckFailurePeriod:  time.Second * 8,
+		AcceptableOffServiceSelfCheckFailurePeriod: time.Second * 9,
+		AcceptableFrontNodeEmptyPeriod:             time.Second * 10,
 
-		OnServiceSelfCheckPeriod  : time.Second * 11,
-		OffServiceSelfCheckPeriod : time.Second * 12,
+		OnServiceSelfCheckPeriod:  time.Second * 11,
+		OffServiceSelfCheckPeriod: time.Second * 12,
 
-		ServiceActivationFailureBlackoutPeriod : time.Second * 13,
-		ServiceReleaseSuccessBlackoutPeriod    : time.Second * 14,
-		ServiceReleaseFailureBlackoutPeriod: time.Second * 15,
+		ServiceActivationFailureBlackoutPeriod: time.Second * 13,
+		ServiceReleaseSuccessBlackoutPeriod:    time.Second * 14,
+		ServiceReleaseFailureBlackoutPeriod:    time.Second * 15,
 	}
 }
 
-func newDefaultServiceTimingConfigForTest_3() (cfg * ServiceTimingConfig) {
-	return &ServiceTimingConfig {
-		AcceptablePreparePeriod: time.Second * 3,
-		AcceptableOnServiceSelfCheckPeriod: time.Second * 4,
+func newDefaultServiceTimingConfigForTest_3() (cfg *ServiceTimingConfig) {
+	return &ServiceTimingConfig{
+		AcceptablePreparePeriod:             time.Second * 3,
+		AcceptableOnServiceSelfCheckPeriod:  time.Second * 4,
 		AcceptableOffServiceSelfCheckPeriod: time.Second * 5,
-		AcceptableServiceActivationPeriod: time.Second * 5,
-		AcceptableServiceReleasingPeriod   : time.Second * 7,
+		AcceptableServiceActivationPeriod:   time.Second * 5,
+		AcceptableServiceReleasingPeriod:    time.Second * 7,
 
-		AcceptableOnServiceSelfCheckFailurePeriod  : time.Second * 8,
-		AcceptableOffServiceSelfCheckFailurePeriod : time.Second * 9,
-		AcceptableFrontNodeEmptyPeriod             : time.Second * 10,
+		AcceptableOnServiceSelfCheckFailurePeriod:  time.Second * 8,
+		AcceptableOffServiceSelfCheckFailurePeriod: time.Second * 9,
+		AcceptableFrontNodeEmptyPeriod:             time.Second * 10,
 
-		OnServiceSelfCheckPeriod  : time.Second * 23,
-		OffServiceSelfCheckPeriod : time.Second * 33,
+		OnServiceSelfCheckPeriod:  time.Second * 23,
+		OffServiceSelfCheckPeriod: time.Second * 33,
 
-		ServiceActivationFailureBlackoutPeriod : time.Second * 13,
-		ServiceReleaseSuccessBlackoutPeriod    : time.Second * 14,
-		ServiceReleaseFailureBlackoutPeriod: time.Second * 15,
+		ServiceActivationFailureBlackoutPeriod: time.Second * 13,
+		ServiceReleaseSuccessBlackoutPeriod:    time.Second * 14,
+		ServiceReleaseFailureBlackoutPeriod:    time.Second * 15,
 	}
 }
 
-func newDefaultServiceTimingConfigForTest_P1() (cfg * ServiceTimingConfig) {
-	return &ServiceTimingConfig {
-		AcceptablePreparePeriod: time.Second * 3,
-		AcceptableOnServiceSelfCheckPeriod: time.Second * 3,
+func newDefaultServiceTimingConfigForTest_P1() (cfg *ServiceTimingConfig) {
+	return &ServiceTimingConfig{
+		AcceptablePreparePeriod:             time.Second * 3,
+		AcceptableOnServiceSelfCheckPeriod:  time.Second * 3,
 		AcceptableOffServiceSelfCheckPeriod: time.Second * 3,
-		AcceptableServiceActivationPeriod: time.Second * 3,
-		AcceptableServiceReleasingPeriod   : time.Second * 3,
+		AcceptableServiceActivationPeriod:   time.Second * 3,
+		AcceptableServiceReleasingPeriod:    time.Second * 3,
 
-		AcceptableOnServiceSelfCheckFailurePeriod  : time.Second * 6,
-		AcceptableOffServiceSelfCheckFailurePeriod : time.Second * 6,
-		AcceptableFrontNodeEmptyPeriod             : time.Second * 10,
+		AcceptableOnServiceSelfCheckFailurePeriod:  time.Second * 6,
+		AcceptableOffServiceSelfCheckFailurePeriod: time.Second * 6,
+		AcceptableFrontNodeEmptyPeriod:             time.Second * 10,
 
-		OnServiceSelfCheckPeriod  : time.Second * 3,
-		OffServiceSelfCheckPeriod : time.Second * 3,
+		OnServiceSelfCheckPeriod:  time.Second * 3,
+		OffServiceSelfCheckPeriod: time.Second * 3,
 
 		ServiceActivationSuccessExemptionPeriod: time.Second * 3,
-		ServiceActivationFailureBlackoutPeriod : time.Second * 10,
-		ServiceReleaseSuccessBlackoutPeriod    : time.Second * 10,
-		ServiceReleaseFailureBlackoutPeriod: time.Second * 10,
+		ServiceActivationFailureBlackoutPeriod:  time.Second * 10,
+		ServiceReleaseSuccessBlackoutPeriod:     time.Second * 10,
+		ServiceReleaseFailureBlackoutPeriod:     time.Second * 10,
 	}
 }
 
-
-func validate_SameServiceTimingConfigContent(t *testing.T, cfg1 * ServiceTimingConfig, cfg2 * ServiceTimingConfig) {
+func validate_SameServiceTimingConfigContent(t *testing.T, cfg1 *ServiceTimingConfig, cfg2 *ServiceTimingConfig) {
 	if cfg1.AcceptablePreparePeriod != cfg2.AcceptablePreparePeriod {
 		t.Errorf("configuration value for AcceptablePreparePeriod is different: %v vs. %v",
 			cfg1.AcceptablePreparePeriod, cfg2.AcceptablePreparePeriod)
@@ -242,7 +241,7 @@ func validate_SameServiceTimingConfigContent(t *testing.T, cfg1 * ServiceTimingC
 			cfg1.OffServiceSelfCheckPeriod, cfg2.OffServiceSelfCheckPeriod)
 	}
 
-	if cfg1.ServiceActivationFailureBlackoutPeriod  != cfg2.ServiceActivationFailureBlackoutPeriod {
+	if cfg1.ServiceActivationFailureBlackoutPeriod != cfg2.ServiceActivationFailureBlackoutPeriod {
 		t.Errorf("configuration value for ServiceActivationFailureBlackoutPeriod is different: %v vs. %v",
 			cfg1.ServiceActivationFailureBlackoutPeriod, cfg2.ServiceActivationFailureBlackoutPeriod)
 	}
@@ -286,6 +285,7 @@ var expect_RequestServiceActivationApprovalResult = [16]bool{
 	true, true, true, true,
 	false, false, true, true,
 }
+
 func demux_MockingRequestServiceActivationApprovalFactors(factorCode int32) (frontNode, forceActivation, localAvailable, isServicing, expectAccept bool) {
 	if 0 != (factorCode & 0x01) {
 		frontNode = true
@@ -295,29 +295,29 @@ func demux_MockingRequestServiceActivationApprovalFactors(factorCode int32) (fro
 	if 0 != (factorCode & 0x02) {
 		forceActivation = true
 	} else {
-		forceActivation =false
+		forceActivation = false
 	}
 	if 0 != (factorCode & 0x04) {
 		localAvailable = true
 	} else {
-		localAvailable =false
+		localAvailable = false
 	}
 	if 0 != (factorCode & 0x08) {
 		isServicing = true
 	} else {
-		isServicing =false
+		isServicing = false
 	}
 	expectAccept = expect_RequestServiceActivationApprovalResult[factorCode]
 	return
 }
 
 func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
-	serviceRack := newServiceRack(2, nil,newDefaultServiceTimingConfigForTest_1())
+	serviceRack := newServiceRack(2, nil, newDefaultServiceTimingConfigForTest_1())
 	var i int32
-	for i =1; i < 4; i++ {
+	for i = 1; i < 4; i++ {
 		serviceRack.AddNode(i, newMockNodeMessagerNoop(i), newDefaultNodeMessengingTimingConfigForTest_0())
 	}
-	for i=0; i < 0x10; i++ {
+	for i = 0; i < 0x10; i++ {
 		var remoteNodeId int32
 		frontNode, forceActivation, localAvailable, isServicing, expectAccept := demux_MockingRequestServiceActivationApprovalFactors(i)
 		if frontNode {
@@ -396,15 +396,15 @@ func TestServiceRack_durationToNextSelfChecks(t *testing.T) {
 	serviceRack.renewLastSelfCheckTimeStamp()
 	durOn := serviceRack.durationToNextOnServiceSelfCheck()
 	durOff := serviceRack.durationToNextOffServiceSelfCheck()
-	if (durOn < time.Second * 22) || (durOn > time.Second * 23) {
+	if (durOn < time.Second*22) || (durOn > time.Second*23) {
 		t.Errorf("duration to next on service check not within expected range (~23 sec): %v", durOn)
 	}
-	if (durOff < time.Second * 32) || (durOff > time.Second * 33) {
+	if (durOff < time.Second*32) || (durOff > time.Second*33) {
 		t.Errorf("duration to next off service check not within expected range (~33 sec): %v", durOff)
 	}
 }
 
-func prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t *testing.T, nodeMsgTimingCfg * NodeMessagingTimingConfig) (serviceRack *ServiceRack, nm [6]*mockNodeMessagingAdapter_C1, teardownFunc func()()) {
+func prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t *testing.T, nodeMsgTimingCfg *NodeMessagingTimingConfig) (serviceRack *ServiceRack, nm [6]*mockNodeMessagingAdapter_C1, teardownFunc func()) {
 	serviceRack = newServiceRack(5, nil, newDefaultServiceTimingConfigForTest_3())
 	for i := 0; i < 6; i++ {
 		nodeId := int32(i + 1)
@@ -417,7 +417,7 @@ func prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t *testing.T, nodeMsgTimin
 	}
 	serviceRack.startNodeLoops()
 	go serviceRack.controlRunner.RunLoop()
-	teardownFunc = func () {
+	teardownFunc = func() {
 		serviceRack.stopNodeLoops()
 		serviceRack.controlRunner.Close()
 	}
@@ -515,7 +515,7 @@ func TestServiceRack_concurServiceActivation(t *testing.T) {
 		for i := 0; i < 6; i++ {
 			nodeId := i + 1
 			if 5 == nodeId {
-				continue	// skip local node
+				continue // skip local node
 			}
 			if false != nm[i].paramBool1 {
 				t.Errorf("expecting reciving force-activation false (node-id: %v): %v", nodeId, nm[i].paramBool1)
@@ -588,14 +588,14 @@ func TestServiceRack_concurServiceActivation(t *testing.T) {
 type mockNodeMessagingAdapter_P1 struct {
 	countHasMessagingFailure int32
 
-	tqueueIsOnService chan time.Time
+	tqueueIsOnService                      chan time.Time
 	tqueueRequestServiceActivationApproval chan time.Time
 }
 
 func newMockNodeMessagingAdapter_P1() (m *mockNodeMessagingAdapter_P1) {
-	return &mockNodeMessagingAdapter_P1 {
-		countHasMessagingFailure: 0,
-		tqueueIsOnService: make(chan time.Time, 8),
+	return &mockNodeMessagingAdapter_P1{
+		countHasMessagingFailure:               0,
+		tqueueIsOnService:                      make(chan time.Time, 8),
 		tqueueRequestServiceActivationApproval: make(chan time.Time, 8),
 	}
 }
@@ -606,7 +606,7 @@ func (m *mockNodeMessagingAdapter_P1) HasMessagingFailure(err error) {
 
 func (m *mockNodeMessagingAdapter_P1) IsOnService(ctx context.Context) (onService bool, err error) {
 	select {
-	case m.tqueueIsOnService<-time.Now():
+	case m.tqueueIsOnService <- time.Now():
 	default:
 	}
 	return false, nil
@@ -622,7 +622,7 @@ func (m *mockNodeMessagingAdapter_P1) expectIsOnService(t *testing.T) {
 
 func (m *mockNodeMessagingAdapter_P1) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
 	select {
-	case m.tqueueRequestServiceActivationApproval<-time.Now():
+	case m.tqueueRequestServiceActivationApproval <- time.Now():
 	default:
 	}
 	return true, nil
@@ -651,18 +651,18 @@ const (
 )
 
 type mockServiceControlAdapter_P1 struct {
-	lastPrepareAt time.Time
-	lastOnServiceSelfCheckAt time.Time
+	lastPrepareAt             time.Time
+	lastOnServiceSelfCheckAt  time.Time
 	lastOffServiceSelfCheckAt time.Time
-	lastActivateServiceAt time.Time
-	lastReleaseServiceAt time.Time
-	lastCloseAt time.Time
+	lastActivateServiceAt     time.Time
+	lastReleaseServiceAt      time.Time
+	lastCloseAt               time.Time
 
 	eventCh chan int
 }
 
 func newMockServiceControlAdapter_P1() (m *mockServiceControlAdapter_P1) {
-	return &mockServiceControlAdapter_P1 {
+	return &mockServiceControlAdapter_P1{
 		eventCh: make(chan int, 8),
 	}
 }
@@ -716,7 +716,7 @@ func (m *mockServiceControlAdapter_P1) validate_eventSequence(t *testing.T, even
 	}
 }
 
-func prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t *testing.T, nodeMsgTimingCfg * NodeMessagingTimingConfig) (serviceController *mockServiceControlAdapter_P1, serviceRack *ServiceRack, nm [3]*mockNodeMessagingAdapter_P1, teardownFunc func()()) {
+func prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t *testing.T, nodeMsgTimingCfg *NodeMessagingTimingConfig) (serviceController *mockServiceControlAdapter_P1, serviceRack *ServiceRack, nm [3]*mockNodeMessagingAdapter_P1, teardownFunc func()) {
 	serviceController = newMockServiceControlAdapter_P1()
 	serviceRack = newServiceRack(2, serviceController, newDefaultServiceTimingConfigForTest_P1())
 	for i := 0; i < 3; i++ {
@@ -729,7 +729,7 @@ func prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t *testing.T, nodeMsgTiming
 		}
 	}
 	go serviceRack.StateTransitionLoop()
-	teardownFunc = func () {
+	teardownFunc = func() {
 		serviceRack.Close()
 	}
 	return serviceController, serviceRack, nm, teardownFunc
@@ -739,7 +739,7 @@ func TestServiceRack_StateTransitionLoop_flowNormal(t *testing.T) {
 	serviceController, serviceRack, nm, teardownFunc := prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
 	defer teardownFunc()
 	t.Run("1-prepare", func(t *testing.T) {
-		var st = []int {
+		var st = []int{
 			testeventServiceControlPrepare,
 			testeventServiceControlOffServiceSelfCheck,
 			-9,
@@ -788,7 +788,7 @@ func TestServiceRack_StateTransitionLoop_flowNormal(t *testing.T) {
 		if false == accept {
 			t.Fatalf("expect request accept: %v", accept)
 		}
-		var st = []int {
+		var st = []int{
 			testeventServiceControlReleaseService,
 			testeventServiceControlOffServiceSelfCheck,
 			-9,
@@ -801,7 +801,7 @@ func TestServiceRack_StateTransitionLoop_flowTakeOver(t *testing.T) {
 	serviceController, serviceRack, nm, teardownFunc := prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
 	defer teardownFunc()
 	t.Run("1-prepare", func(t *testing.T) {
-		var st = []int {
+		var st = []int{
 			testeventServiceControlPrepare,
 			testeventServiceControlOffServiceSelfCheck,
 			-9,
@@ -841,7 +841,7 @@ func TestServiceRack_StateTransitionLoop_flowTakeOver(t *testing.T) {
 		if nil != err {
 			t.Fatalf("expect take over success: %v", err)
 		}
-		var st = []int {
+		var st = []int{
 			testeventServiceControlOnServiceSelfCheck,
 			-9,
 		}
@@ -858,7 +858,7 @@ func TestServiceRack_StateTransitionLoop_flowTakeOver(t *testing.T) {
 		if false == accept {
 			t.Fatalf("expect request accept: %v", accept)
 		}
-		var st = []int {
+		var st = []int{
 			testeventServiceControlReleaseService,
 			testeventServiceControlOffServiceSelfCheck,
 			-9,

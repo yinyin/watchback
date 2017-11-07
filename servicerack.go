@@ -1,11 +1,11 @@
 package watchback
 
 import (
-	"fmt"
-	"time"
-	"log"
 	"errors"
+	"fmt"
 	uatomic "go.uber.org/atomic"
+	"log"
+	"time"
 )
 
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
@@ -21,7 +21,7 @@ type ServiceTimingConfig struct {
 	AcceptableOffServiceSelfCheckPeriod time.Duration
 	AcceptableServiceActivationPeriod   time.Duration
 	AcceptableServiceReleasingPeriod    time.Duration
-	AcceptableControllerClosePeriod time.Duration
+	AcceptableControllerClosePeriod     time.Duration
 
 	AcceptableOnServiceSelfCheckFailurePeriod  time.Duration
 	AcceptableOffServiceSelfCheckFailurePeriod time.Duration
@@ -31,54 +31,54 @@ type ServiceTimingConfig struct {
 	OffServiceSelfCheckPeriod time.Duration
 
 	ServiceActivationSuccessExemptionPeriod time.Duration
-	ServiceActivationFailureBlackoutPeriod time.Duration
-	ServiceReleaseSuccessBlackoutPeriod    time.Duration
-	ServiceReleaseFailureBlackoutPeriod    time.Duration
+	ServiceActivationFailureBlackoutPeriod  time.Duration
+	ServiceReleaseSuccessBlackoutPeriod     time.Duration
+	ServiceReleaseFailureBlackoutPeriod     time.Duration
 
 	BootupOperationalDelay time.Duration
 }
 
-func (c * ServiceTimingConfig) copyFrom(other * ServiceTimingConfig) {
+func (c *ServiceTimingConfig) copyFrom(other *ServiceTimingConfig) {
 	*c = *other
 }
 
 type ServiceRack struct {
-	localNodeId int32
+	localNodeId       int32
 	serviceController ServiceControlAdapter
 
-	frontNodes []*WorkerNode
-	allNodes []*WorkerNode
+	frontNodes      []*WorkerNode
+	allNodes        []*WorkerNode
 	frontNodesReady bool
 
-	availability availabilityLogic
+	availability  availabilityLogic
 	controlRunner callableBundleRunner
-	stateTransit stateTransporter
+	stateTransit  stateTransporter
 
 	externalOverrideAvailable availabilityLogic
-	anyFrontNodeAvailable availabilityLogic
+	anyFrontNodeAvailable     availabilityLogic
 
 	serviceActivating uatomic.Bool
-	servicing uatomic.Bool
+	servicing         uatomic.Bool
 
-	lastSelfCheckAt time.Time
+	lastSelfCheckAt     time.Time
 	lastSelfCheckResult error
 
 	timingConfig ServiceTimingConfig
 }
 
-func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter, timingConfig * ServiceTimingConfig) (serviceRack * ServiceRack) {
-	serviceRack = &ServiceRack {
-		localNodeId: localNodeId,
-		serviceController: serviceController,
-		frontNodes: make([]*WorkerNode, 0),
-		allNodes: make([]*WorkerNode, 0),
-		frontNodesReady: false,
-		availability: newAvailabilityLogic(),
-		controlRunner: newCallableBundleRunner(1),
-		stateTransit: newStateTransporter(),
+func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter, timingConfig *ServiceTimingConfig) (serviceRack *ServiceRack) {
+	serviceRack = &ServiceRack{
+		localNodeId:               localNodeId,
+		serviceController:         serviceController,
+		frontNodes:                make([]*WorkerNode, 0),
+		allNodes:                  make([]*WorkerNode, 0),
+		frontNodesReady:           false,
+		availability:              newAvailabilityLogic(),
+		controlRunner:             newCallableBundleRunner(1),
+		stateTransit:              newStateTransporter(),
 		externalOverrideAvailable: newAvailabilityLogic(),
-		anyFrontNodeAvailable: newAvailabilityLogic(),
-		lastSelfCheckResult: nil,
+		anyFrontNodeAvailable:     newAvailabilityLogic(),
+		lastSelfCheckResult:       nil,
 	}
 	serviceRack.serviceActivating.Store(false)
 	serviceRack.servicing.Store(false)
@@ -89,7 +89,7 @@ func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter, 
 	return serviceRack
 }
 
-func (x * ServiceRack) AddNode(nodeId int32, messenger NodeMessagingAdapter, messagingTimingConfig *NodeMessagingTimingConfig) (workerNode * WorkerNode, err error) {
+func (x *ServiceRack) AddNode(nodeId int32, messenger NodeMessagingAdapter, messagingTimingConfig *NodeMessagingTimingConfig) (workerNode *WorkerNode, err error) {
 	if nodeId == x.localNodeId {
 		if x.frontNodesReady {
 			return nil, fmt.Errorf("duplicated local node: id=%v", nodeId)
@@ -110,23 +110,23 @@ func (x * ServiceRack) AddNode(nodeId int32, messenger NodeMessagingAdapter, mes
 	return workerNode, nil
 }
 
-func (x * ServiceRack) startNodeLoops() {
+func (x *ServiceRack) startNodeLoops() {
 	for _, node := range x.allNodes {
 		go node.RunMessagingLoop()
 	}
 }
 
-func (x * ServiceRack) stopNodeLoops() {
+func (x *ServiceRack) stopNodeLoops() {
 	for _, node := range x.allNodes {
 		node.Close()
 	}
 }
 
-func (x * ServiceRack) renewLastSelfCheckTimeStamp() {
+func (x *ServiceRack) renewLastSelfCheckTimeStamp() {
 	x.lastSelfCheckAt = time.Now()
 }
 
-func (x * ServiceRack) durationToNextSelfCheck(d time.Duration) (result time.Duration) {
+func (x *ServiceRack) durationToNextSelfCheck(d time.Duration) (result time.Duration) {
 	nextCheckAt := x.lastSelfCheckAt.Add(d)
 	result = nextCheckAt.Sub(time.Now())
 	if result < 0 {
@@ -135,15 +135,15 @@ func (x * ServiceRack) durationToNextSelfCheck(d time.Duration) (result time.Dur
 	return result
 }
 
-func (x * ServiceRack) durationToNextOnServiceSelfCheck() (result time.Duration) {
+func (x *ServiceRack) durationToNextOnServiceSelfCheck() (result time.Duration) {
 	return x.durationToNextSelfCheck(x.timingConfig.OnServiceSelfCheckPeriod)
 }
 
-func (x * ServiceRack) durationToNextOffServiceSelfCheck() (result time.Duration) {
+func (x *ServiceRack) durationToNextOffServiceSelfCheck() (result time.Duration) {
 	return x.durationToNextSelfCheck(x.timingConfig.OffServiceSelfCheckPeriod)
 }
 
-func (x * ServiceRack) isFrontNodeId(nodeId int32) (found bool) {
+func (x *ServiceRack) isFrontNodeId(nodeId int32) (found bool) {
 	for _, node := range x.frontNodes {
 		if node.nodeId == nodeId {
 			return true
@@ -153,7 +153,7 @@ func (x * ServiceRack) isFrontNodeId(nodeId int32) (found bool) {
 }
 
 // Check if any front node is operating normally (ie: is running service)
-func (x * ServiceRack) checkFrontNode() (err error) {
+func (x *ServiceRack) checkFrontNode() (err error) {
 	for _, node := range x.frontNodes {
 		onService, err := node.IsOnService()
 		if nil != err {
@@ -168,7 +168,7 @@ func (x * ServiceRack) checkFrontNode() (err error) {
 }
 
 // Check with all nodes see if any disagreement on service activation
-func (x * ServiceRack) concurServiceActivation(forceActivation bool) (success bool) {
+func (x *ServiceRack) concurServiceActivation(forceActivation bool) (success bool) {
 	for _, node := range x.allNodes {
 		if isApproval, err := node.RequestServiceActivationApproval(x.localNodeId, forceActivation); nil != err {
 			log.Printf("WARN: failed on requesting service activiation approval from node %v: %v", node.nodeId, err)
@@ -181,7 +181,7 @@ func (x * ServiceRack) concurServiceActivation(forceActivation bool) (success bo
 }
 
 // Activate service and return success state.
-func (x * ServiceRack) activateService(forceActivation bool) (err error) {
+func (x *ServiceRack) activateService(forceActivation bool) (err error) {
 	if true == x.servicing.Load() {
 		log.Printf("INFO: ignoring service activation: service already running (force=%v).", forceActivation)
 		return nil
@@ -193,9 +193,9 @@ func (x * ServiceRack) activateService(forceActivation bool) (err error) {
 	x.serviceActivating.Store(true)
 	defer x.serviceActivating.Store(false)
 	if false == x.concurServiceActivation(forceActivation) {
-		return ErrCannotConcurServiceActivation	// rejected, continue off-service checks
+		return ErrCannotConcurServiceActivation // rejected, continue off-service checks
 	}
-	if nil ==  x.serviceController {
+	if nil == x.serviceController {
 		log.Print("WARN: empty service controller (runServiceActivation)")
 		x.servicing.Store(true)
 		return nil
@@ -216,12 +216,12 @@ func (x * ServiceRack) activateService(forceActivation bool) (err error) {
 			log.Printf("WARN: failed on activating service: %v", err)
 		}
 	}
-	return ErrFailedOnServiceActivatingProcess	// failed service activation, continue off-service checks
+	return ErrFailedOnServiceActivatingProcess // failed service activation, continue off-service checks
 
 }
 
-func (x * ServiceRack) runPrepare() (err error) {
-	if nil ==  x.serviceController {
+func (x *ServiceRack) runPrepare() (err error) {
+	if nil == x.serviceController {
 		log.Printf("WARN: empty service controller (runPrepare)")
 		return nil
 	}
@@ -234,8 +234,8 @@ func (x * ServiceRack) runPrepare() (err error) {
 	return err
 }
 
-func (x * ServiceRack) runClose() (err error) {
-	if nil ==  x.serviceController {
+func (x *ServiceRack) runClose() (err error) {
+	if nil == x.serviceController {
 		log.Printf("WARN: empty service controller (runClose)")
 		return nil
 	}
@@ -249,12 +249,12 @@ func (x * ServiceRack) runClose() (err error) {
 	return err
 }
 
-func (x * ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
+func (x *ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
 	if false == x.servicing.Load() {
 		return x.runOffServiceSelfCheck()
 	}
 	x.renewLastSelfCheckTimeStamp()
-	if nil ==  x.serviceController {
+	if nil == x.serviceController {
 		log.Printf("WARN: empty service controller (runOnServiceSelfCheck)")
 		return x.runOnServiceSelfCheck, x.durationToNextOnServiceSelfCheck()
 	}
@@ -272,7 +272,7 @@ func (x * ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invoke
 	return x.runOnServiceSelfCheck, x.durationToNextOnServiceSelfCheck()
 }
 
-func (x * ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
+func (x *ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
 	if true == x.servicing.Load() {
 		return x.runOnServiceSelfCheck()
 	}
@@ -281,7 +281,7 @@ func (x * ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invok
 		log.Printf("WARN: external overrided, skip self check.")
 		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
 	}
-	if nil ==  x.serviceController {
+	if nil == x.serviceController {
 		log.Printf("WARN: empty service controller (runOffServiceSelfCheck)")
 		return x.runFrontNodeCheck, 0
 	}
@@ -301,7 +301,7 @@ func (x * ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invok
 	return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
 }
 
-func (x * ServiceRack) runFrontNodeCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
+func (x *ServiceRack) runFrontNodeCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
 	if err := x.checkFrontNode(); nil != err {
 		if false == x.anyFrontNodeAvailable.Availability() {
 			if true == x.availability.Availability() {
@@ -315,16 +315,16 @@ func (x * ServiceRack) runFrontNodeCheck() (nextHandler stateHandler, invokeAfte
 	return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
 }
 
-func (x * ServiceRack) runServiceActivation() (nextHandler stateHandler, invokeAfter time.Duration) {
+func (x *ServiceRack) runServiceActivation() (nextHandler stateHandler, invokeAfter time.Duration) {
 	if err := x.activateService(false); nil != err {
 		log.Printf("ERR: failed service activation, continue off-service checks: %v", err)
 		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
-		}
+	}
 	return x.runOnServiceSelfCheck, x.durationToNextOnServiceSelfCheck()
 }
 
-func (x * ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter time.Duration) {
-	if (false == x.servicing.Load()) || (nil ==  x.serviceController) {
+func (x *ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter time.Duration) {
+	if (false == x.servicing.Load()) || (nil == x.serviceController) {
 		log.Printf("WARN: empty service controller (runServiceRelease)")
 		x.servicing.Store(false)
 		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
@@ -347,7 +347,7 @@ func (x * ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfte
 	return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
 }
 
-func (x * ServiceRack) stopService() {
+func (x *ServiceRack) stopService() {
 	if true == x.servicing.Load() {
 		x.stateTransit.AppendDetour(func() {
 			x.runServiceRelease()
@@ -357,7 +357,7 @@ func (x * ServiceRack) stopService() {
 
 // Answers service activation requests from remote peers.
 // Intent to be invoke by service communication adapter
-func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActivation bool) (accept bool) {
+func (x *ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActivation bool) (accept bool) {
 	if true == x.serviceActivating.Load() {
 		return false
 	}
@@ -373,7 +373,7 @@ func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiv
 	return true
 }
 
-func (x * ServiceRack) ServiceTakeOver() (err error) {
+func (x *ServiceRack) ServiceTakeOver() (err error) {
 	ch := make(chan error, 1)
 	x.stateTransit.AppendDetour(func() {
 		ch <- x.activateService(true)
@@ -387,14 +387,14 @@ func (x * ServiceRack) ServiceTakeOver() (err error) {
 
 // Answers service status query requests from remote peers.
 // Intent to be invoke by service communication adapter
-func (x * ServiceRack) IsOnService() (onService bool) {
+func (x *ServiceRack) IsOnService() (onService bool) {
 	if x.servicing.Load() && x.availability.Availability() {
 		return true
 	}
 	return false
 }
 
-func (x * ServiceRack) Close() {
+func (x *ServiceRack) Close() {
 	x.stopService()
 	x.stateTransit.AppendDetour(func() {
 		x.runClose()
@@ -402,7 +402,7 @@ func (x * ServiceRack) Close() {
 	x.stateTransit.Stop()
 }
 
-func (x * ServiceRack) StateTransitionLoop() (err error) {
+func (x *ServiceRack) StateTransitionLoop() (err error) {
 	x.startNodeLoops()
 	defer x.stopNodeLoops()
 	go x.controlRunner.RunLoop()

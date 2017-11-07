@@ -5,16 +5,16 @@ import (
 	"time"
 )
 
-func runAndWaitStateTransporterForTesting(t *testing.T, s * stateTransporter, h stateHandler) (waitStop func()()) {
+func runAndWaitStateTransporterForTesting(t *testing.T, s *stateTransporter, h stateHandler) (waitStop func()) {
 	loopStopped := make(chan int32, 1)
 	go func() {
 		s.RunStateTransportLoop(h)
-		loopStopped<-1
+		loopStopped <- 1
 	}()
 	return func() {
 		select {
 		case <-loopStopped:
-		case <-time.After(time.Second*3):
+		case <-time.After(time.Second * 3):
 			t.Errorf("state transporter loop does not stop within 3 seconds")
 		}
 	}
@@ -30,36 +30,36 @@ type mockStateShift1 struct {
 	c3 chan time.Time
 }
 
-func newMockStateShift1() (s * mockStateShift1) {
-	return &mockStateShift1 {
+func newMockStateShift1() (s *mockStateShift1) {
+	return &mockStateShift1{
 		s0: time.Now(),
 		c2: make(chan time.Time, 1),
 		c3: make(chan time.Time, 1),
 	}
 }
 
-func (m * mockStateShift1) h1() (next stateHandler, after time.Duration) {
+func (m *mockStateShift1) h1() (next stateHandler, after time.Duration) {
 	m.s1 = time.Now()
 	return m.h2, 0
 }
 
-func (m * mockStateShift1) h2() (next stateHandler, after time.Duration) {
+func (m *mockStateShift1) h2() (next stateHandler, after time.Duration) {
 	m.c2 <- time.Now()
 	m.s2 = time.Now()
-	return m.h3, time.Second * 2 + time.Microsecond * 5
+	return m.h3, time.Second*2 + time.Microsecond*5
 }
 
-func (m * mockStateShift1) h3() (next stateHandler, after time.Duration) {
+func (m *mockStateShift1) h3() (next stateHandler, after time.Duration) {
 	m.s3 = time.Now()
-	m.c3 <-time.Now()
+	m.c3 <- time.Now()
 	return nil, 0
 }
 
-func (m * mockStateShift1) detour1() {
+func (m *mockStateShift1) detour1() {
 	m.i1 = time.Now()
 }
 
-func (m * mockStateShift1) validateT1normal(t *testing.T) {
+func (m *mockStateShift1) validateT1normal(t *testing.T) {
 	if m.s0.After(m.s1) {
 		t.Errorf("expecting s0 < s1: %v, %v", m.s0, m.s1)
 	}
@@ -72,7 +72,7 @@ func (m * mockStateShift1) validateT1normal(t *testing.T) {
 	}
 }
 
-func (m * mockStateShift1) testT1normal(t *testing.T, s * stateTransporter) {
+func (m *mockStateShift1) testT1normal(t *testing.T, s *stateTransporter) {
 	waitStop := runAndWaitStateTransporterForTesting(t, s, m.h1)
 	<-m.c3
 	m.validateT1normal(t)
@@ -82,7 +82,7 @@ func (m * mockStateShift1) testT1normal(t *testing.T, s * stateTransporter) {
 	}
 }
 
-func (m * mockStateShift1) validateT2detour(t *testing.T) {
+func (m *mockStateShift1) validateT2detour(t *testing.T) {
 	if m.s0.After(m.s1) {
 		t.Errorf("expecting s0 < s1: %v, %v", m.s0, m.s1)
 	}
@@ -97,7 +97,7 @@ func (m * mockStateShift1) validateT2detour(t *testing.T) {
 	}
 }
 
-func (m * mockStateShift1) testT2detour(t *testing.T, s * stateTransporter) {
+func (m *mockStateShift1) testT2detour(t *testing.T, s *stateTransporter) {
 	waitStop := runAndWaitStateTransporterForTesting(t, s, m.h1)
 	<-m.c2
 	s.AppendDetour(m.detour1)
@@ -109,7 +109,7 @@ func (m * mockStateShift1) testT2detour(t *testing.T, s * stateTransporter) {
 	}
 }
 
-func (m * mockStateShift1) testT3stop(t *testing.T, s * stateTransporter) {
+func (m *mockStateShift1) testT3stop(t *testing.T, s *stateTransporter) {
 	waitStop := runAndWaitStateTransporterForTesting(t, s, m.h1)
 	s.Stop()
 	waitStop()
