@@ -57,31 +57,31 @@ const AdviceServiceActivationFailureBlackoutPeriodShorterThanCheckAndActivateOpe
 const AdviceServiceReleaseSuccessBlackoutPeriodShorterThanCheckAndActivateOperation = "Blackout period for successful service releasing shorter than sum of service check period and service activation time"
 const AdviceServiceReleaseFailureBlackoutPeriodShorterThanCheckAndActivateOperation = "Blackout period for failed service releasing shorter than sum of service check period and service activation time"
 
-func (c *ServiceTimingConfig)  Advice() (advices []string) {
+func (c *ServiceTimingConfig) Advice() (advices []string) {
 	advices = make([]string, 0)
 
-	if c.AcceptablePreparePeriod        < time.Millisecond {
+	if c.AcceptablePreparePeriod < time.Millisecond {
 		advices = append(advices, AdviceAcceptablePreparePeriodTooShort)
 	}
-	if c.AcceptableOnServiceSelfCheckPeriod        < time.Millisecond {
+	if c.AcceptableOnServiceSelfCheckPeriod < time.Millisecond {
 		advices = append(advices, AdviceAcceptableOnServiceSelfCheckPeriodTooShort)
 	}
-	if c.AcceptableOffServiceSelfCheckPeriod        < time.Millisecond {
+	if c.AcceptableOffServiceSelfCheckPeriod < time.Millisecond {
 		advices = append(advices, AdviceAcceptableOffServiceSelfCheckPeriodTooShort)
 	}
-	if c.AcceptableServiceActivationPeriod        < time.Millisecond {
+	if c.AcceptableServiceActivationPeriod < time.Millisecond {
 		advices = append(advices, AdviceAcceptableServiceActivationPeriodTooShort)
 	}
-	if c.AcceptableServiceReleasingPeriod        < time.Millisecond {
+	if c.AcceptableServiceReleasingPeriod < time.Millisecond {
 		advices = append(advices, AdviceAcceptableServiceReleasingPeriodTooShort)
 	}
-	if c.AcceptableControllerClosePeriod        < time.Nanosecond {
+	if c.AcceptableControllerClosePeriod < time.Nanosecond {
 		advices = append(advices, AdviceAcceptableControllerClosePeriodTooShort)
 	}
-	if c.AcceptableOnServiceSelfCheckFailurePeriod  < c.AcceptableOnServiceSelfCheckPeriod {
+	if c.AcceptableOnServiceSelfCheckFailurePeriod < c.AcceptableOnServiceSelfCheckPeriod {
 		advices = append(advices, AdviceAcceptableOnServiceSelfCheckFailurePeriodShorterThanOperation)
 	}
-	if c.AcceptableOffServiceSelfCheckFailurePeriod  < c.AcceptableOffServiceSelfCheckPeriod {
+	if c.AcceptableOffServiceSelfCheckFailurePeriod < c.AcceptableOffServiceSelfCheckPeriod {
 		advices = append(advices, AdviceAcceptableOffServiceSelfCheckFailurePeriodShorterThanOperation)
 	}
 	if c.OnServiceSelfCheckPeriod < c.AcceptableOnServiceSelfCheckPeriod {
@@ -92,9 +92,9 @@ func (c *ServiceTimingConfig)  Advice() (advices []string) {
 	}
 	var largerSelfCheckPeriod time.Duration
 	if c.OnServiceSelfCheckPeriod > c.OffServiceSelfCheckPeriod {
-		largerSelfCheckPeriod=c.OnServiceSelfCheckPeriod
+		largerSelfCheckPeriod = c.OnServiceSelfCheckPeriod
 	} else {
-		largerSelfCheckPeriod=c.OffServiceSelfCheckPeriod
+		largerSelfCheckPeriod = c.OffServiceSelfCheckPeriod
 	}
 	if c.ServiceActivationSuccessExemptionPeriod < largerSelfCheckPeriod {
 		advices = append(advices, AdviceServiceActivationSuccessExemptionPeriodShorterThanCheck)

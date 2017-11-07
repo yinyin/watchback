@@ -113,8 +113,7 @@ func validate_ServiceRack_nodeCount(t *testing.T, serviceRack *ServiceRack, fron
 }
 
 func newDefaultServiceTimingConfigForTest_0() (cfg *ServiceTimingConfig) {
-	return &ServiceTimingConfig{
-	}
+	return &ServiceTimingConfig{}
 }
 
 func newDefaultServiceTimingConfigForTest_1() (cfg *ServiceTimingConfig) {
@@ -187,7 +186,7 @@ func newDefaultServiceTimingConfigForTest_A1() (cfg *ServiceTimingConfig) {
 		AcceptableOffServiceSelfCheckPeriod: time.Second * 5,
 		AcceptableServiceActivationPeriod:   time.Second * 5,
 		AcceptableServiceReleasingPeriod:    time.Second * 7,
-		AcceptableControllerClosePeriod: time.Second * 8,
+		AcceptableControllerClosePeriod:     time.Second * 8,
 
 		AcceptableOnServiceSelfCheckFailurePeriod:  time.Second * 2,
 		AcceptableOffServiceSelfCheckFailurePeriod: time.Second * 2,
@@ -209,7 +208,7 @@ func newDefaultServiceTimingConfigForTest_A2() (cfg *ServiceTimingConfig) {
 		AcceptableOffServiceSelfCheckPeriod: time.Second * 5,
 		AcceptableServiceActivationPeriod:   time.Second * 5,
 		AcceptableServiceReleasingPeriod:    time.Second * 7,
-		AcceptableControllerClosePeriod: time.Second * 8,
+		AcceptableControllerClosePeriod:     time.Second * 8,
 
 		AcceptableOnServiceSelfCheckFailurePeriod:  time.Second * 2,
 		AcceptableOffServiceSelfCheckFailurePeriod: time.Second * 2,
@@ -219,9 +218,9 @@ func newDefaultServiceTimingConfigForTest_A2() (cfg *ServiceTimingConfig) {
 		OffServiceSelfCheckPeriod: time.Second * 2,
 
 		ServiceActivationSuccessExemptionPeriod: time.Second * 1,
-		ServiceActivationFailureBlackoutPeriod: time.Second * 13,
-		ServiceReleaseSuccessBlackoutPeriod:    time.Second * 14,
-		ServiceReleaseFailureBlackoutPeriod:    time.Second * 15,
+		ServiceActivationFailureBlackoutPeriod:  time.Second * 13,
+		ServiceReleaseSuccessBlackoutPeriod:     time.Second * 14,
+		ServiceReleaseFailureBlackoutPeriod:     time.Second * 15,
 	}
 }
 
@@ -314,39 +313,39 @@ func TestServiceTimingConfig_CopyFrom(t *testing.T) {
 
 func TestServiceTimingConfig_Advice0(t *testing.T) {
 	var expectation = map[string]bool{
-		AdviceAcceptablePreparePeriodTooShort: false,
-		AdviceAcceptableOnServiceSelfCheckPeriodTooShort: false,
+		AdviceAcceptablePreparePeriodTooShort:             false,
+		AdviceAcceptableOnServiceSelfCheckPeriodTooShort:  false,
 		AdviceAcceptableOffServiceSelfCheckPeriodTooShort: false,
-		AdviceAcceptableServiceActivationPeriodTooShort: false,
-		AdviceAcceptableServiceReleasingPeriodTooShort: false,
-		AdviceAcceptableControllerClosePeriodTooShort: false,
+		AdviceAcceptableServiceActivationPeriodTooShort:   false,
+		AdviceAcceptableServiceReleasingPeriodTooShort:    false,
+		AdviceAcceptableControllerClosePeriodTooShort:     false,
 	}
-	advices:=newDefaultServiceTimingConfigForTest_0().Advice()
+	advices := newDefaultServiceTimingConfigForTest_0().Advice()
 	validate_Advices(t, expectation, advices)
 }
 
 func TestServiceTimingConfig_Advice1(t *testing.T) {
 	var expectation = map[string]bool{
-		AdviceAcceptableOnServiceSelfCheckFailurePeriodShorterThanOperation: false,
-		AdviceAcceptableOffServiceSelfCheckFailurePeriodShorterThanOperation : false,
-		AdviceServiceActivationSuccessExemptionPeriodShorterThanCheck: false,
+		AdviceAcceptableOnServiceSelfCheckFailurePeriodShorterThanOperation:              false,
+		AdviceAcceptableOffServiceSelfCheckFailurePeriodShorterThanOperation:             false,
+		AdviceServiceActivationSuccessExemptionPeriodShorterThanCheck:                    false,
 		AdviceServiceActivationFailureBlackoutPeriodShorterThanCheckAndActivateOperation: false,
-		AdviceServiceReleaseSuccessBlackoutPeriodShorterThanCheckAndActivateOperation: false,
-		AdviceServiceReleaseFailureBlackoutPeriodShorterThanCheckAndActivateOperation: false,
+		AdviceServiceReleaseSuccessBlackoutPeriodShorterThanCheckAndActivateOperation:    false,
+		AdviceServiceReleaseFailureBlackoutPeriodShorterThanCheckAndActivateOperation:    false,
 	}
-	advices:=newDefaultServiceTimingConfigForTest_A1().Advice()
+	advices := newDefaultServiceTimingConfigForTest_A1().Advice()
 	validate_Advices(t, expectation, advices)
 }
 
 func TestServiceTimingConfig_Advice2(t *testing.T) {
 	var expectation = map[string]bool{
-		AdviceAcceptableOnServiceSelfCheckFailurePeriodShorterThanOperation: false,
-		AdviceAcceptableOffServiceSelfCheckFailurePeriodShorterThanOperation : false,
-		AdviceOnServiceSelfCheckPeriodShorterThanOperation : false,
-		AdviceOffServiceSelfCheckPeriodShorterThanOperation: false,
-		AdviceServiceActivationSuccessExemptionPeriodShorterThanCheck: false,
+		AdviceAcceptableOnServiceSelfCheckFailurePeriodShorterThanOperation:  false,
+		AdviceAcceptableOffServiceSelfCheckFailurePeriodShorterThanOperation: false,
+		AdviceOnServiceSelfCheckPeriodShorterThanOperation:                   false,
+		AdviceOffServiceSelfCheckPeriodShorterThanOperation:                  false,
+		AdviceServiceActivationSuccessExemptionPeriodShorterThanCheck:        false,
 	}
-	advices:=newDefaultServiceTimingConfigForTest_A2().Advice()
+	advices := newDefaultServiceTimingConfigForTest_A2().Advice()
 	validate_Advices(t, expectation, advices)
 }
 
