@@ -35,6 +35,61 @@ func newDefaultNodeMessengingTimingConfigForTest_2() (cfg *NodeMessagingTimingCo
 	}
 }
 
+func validate_Advices(t *testing.T, expectation map[string]bool, advices []string) {
+	unexpected := make([]string, 0)
+	for _, adv := range advices {
+		_, ok := expectation[adv]
+		if ok {
+			expectation[adv] = true
+		} else {
+			unexpected = append(unexpected, adv)
+		}
+	}
+	for adv, result := range expectation {
+		if false == result {
+			t.Errorf("expecting to have %v as one of advices", adv)
+		}
+	}
+	if len(unexpected) > 0 {
+		t.Errorf("caught unexpected advices: %v", unexpected)
+	}
+}
+
+func TestNodeMessagingTimingConfig_Advice0(t *testing.T) {
+	var expectation = map[string]bool {
+		AdviceNodeMessagingTimingFlexOnServiceCheckPeriodTooSmall: false,
+		AdviceNodeMessagingTimingExpectOnServiceQueryWithinTooSmall: false,
+		AdviceNodeMessagingTimingExpectServiceActivationRequestWithinTooSmall: false,
+		AdviceNodeMessagingTimingExpectMessengerCloseWithinTooSmall: false,
+		AdviceNodeMessagingTimingFlexOnServiceCheckLessThanSamllestMessagingFailureDuration: false,
+	}
+	advices := newDefaultNodeMessengingTimingConfigForTest_0().Advice()
+	validate_Advices(t, expectation, advices)
+}
+
+func TestNodeMessagingTimingConfig_Advice1(t *testing.T) {
+	cfg := &NodeMessagingTimingConfig {
+		FlexOnServiceCheckPeriod:             time.Second,
+		ExpectOnServiceQueryWithin:           time.Second * 2,
+		ExpectServiceActivationRequestWithin: time.Second,
+		ExpectMessengerCloseWithin:           time.Second,
+	}
+	var expectation = map[string]bool {
+		AdviceNodeMessagingTimingFlexOnServiceCheckLessThanExpectOnServiceQuery: false,
+		AdviceNodeMessagingTimingFlexOnServiceCheckLessThanSamllestMessagingFailureDuration: false,
+	}
+	advices := cfg.Advice()
+	validate_Advices(t, expectation, advices)
+}
+
+func TestNodeMessagingTimingConfig_Advice2(t *testing.T) {
+	var expectation = map[string]bool {
+	}
+	advices := newDefaultNodeMessengingTimingConfigForTest_2().Advice()
+	validate_Advices(t, expectation, advices)
+}
+
+
 func TestWorkerNode_NodeId(t *testing.T) {
 	n := newWorkerNode(3, nil, newDefaultNodeMessengingTimingConfigForTest_0())
 	if nodeId := n.NodeId(); 3 != nodeId {

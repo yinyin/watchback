@@ -41,6 +41,36 @@ func (c * NodeMessagingTimingConfig) copyFrom(other * NodeMessagingTimingConfig)
 	*c = *other
 }
 
+const AdviceNodeMessagingTimingFlexOnServiceCheckPeriodTooSmall = "Flex check period for on service check seems too small (< 1ms)"
+const AdviceNodeMessagingTimingExpectOnServiceQueryWithinTooSmall = "Expected duration for on service query seems too small (< 1ns)"
+const AdviceNodeMessagingTimingExpectServiceActivationRequestWithinTooSmall = "Expected duration for service activation request seems too small (< 1ns)"
+const AdviceNodeMessagingTimingExpectMessengerCloseWithinTooSmall = "Expected duration for closing messenger seems too small (< 1ns)"
+const AdviceNodeMessagingTimingFlexOnServiceCheckLessThanExpectOnServiceQuery = "Flex check period for on service check less than on service query"
+const AdviceNodeMessagingTimingFlexOnServiceCheckLessThanSamllestMessagingFailureDuration = "Flex check period for on service check less than smallest messaging failure duration (< MAX_RETRY * (EXPIRE_COLLECT_PERIOD + EXPECT_ON_SERVICE_QUERY))"
+
+func (c * NodeMessagingTimingConfig) Advice() (advices []string) {
+	advices = make([]string, 0)
+	if c.FlexOnServiceCheckPeriod < time.Millisecond {
+		advices = append(advices, AdviceNodeMessagingTimingFlexOnServiceCheckPeriodTooSmall)
+	}
+	if c.ExpectOnServiceQueryWithin < time.Nanosecond {
+		advices = append(advices, AdviceNodeMessagingTimingExpectOnServiceQueryWithinTooSmall)
+	}
+	if c.ExpectServiceActivationRequestWithin < time.Nanosecond {
+		advices = append(advices, AdviceNodeMessagingTimingExpectServiceActivationRequestWithinTooSmall)
+	}
+	if c.ExpectMessengerCloseWithin < time.Nanosecond {
+		advices = append(advices, AdviceNodeMessagingTimingExpectMessengerCloseWithinTooSmall)
+	}
+	if c.FlexOnServiceCheckPeriod < c.ExpectOnServiceQueryWithin {
+		advices = append(advices, AdviceNodeMessagingTimingFlexOnServiceCheckLessThanExpectOnServiceQuery)
+	}
+	allErrorSmallestMessagingTime := maxNodeMessagingOperationAttempt * (ExpiredCallableResultCollectPeriod + c.ExpectOnServiceQueryWithin)
+	if c.FlexOnServiceCheckPeriod < allErrorSmallestMessagingTime {
+		advices = append(advices, AdviceNodeMessagingTimingFlexOnServiceCheckLessThanSamllestMessagingFailureDuration)
+	}
+	return advices
+}
 
 type WorkerNode struct {
 	nodeId    int32
