@@ -9,6 +9,8 @@ import (
 )
 
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
+var ErrCannotConcurServiceActivation = errors.New("rejected by peer node on concur service activation")
+var ErrFailedOnServiceActivatingProcess = errors.New("failed on running service activating process")
 
 var EmptyServiceControllerStandbyPeriod = time.Minute * 10
 
@@ -176,6 +178,39 @@ func (x * ServiceRack) concurServiceActivation(forceActivation bool) (success bo
 	return true
 }
 
+// Activate service and return success state.
+// This method does not check current servicing status. Must NOT invoke if service is running already.
+func (x * ServiceRack) activateService(forceActivation bool) (err error) {
+	x.serviceActivating.Store(true)
+	defer x.serviceActivating.Store(false)
+	if false == x.concurServiceActivation(forceActivation) {
+		return ErrCannotConcurServiceActivation	// rejected, continue off-service checks
+	}
+	if nil ==  x.serviceController {
+		log.Printf("WARN: empty service controller (runServiceActivation)")
+		x.servicing.Store(true)
+		return nil
+	}
+	log.Printf("INFO: attempt to activate service (last-self-check-result: %v, force-activation: %v)", x.lastSelfCheckResult, forceActivation)
+	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.ActivateService, x.timingConfig.AcceptableServiceActivationPeriod)
+	if nil != err {
+		log.Printf("ERR: failed on invoke ActivateService: %v", err)
+	} else {
+		defer cancel()
+		err = <-c
+		if nil == err {
+			x.servicing.Store(true)
+			x.availability.AvailableWithin(x.timingConfig.AcceptableOnServiceSelfCheckFailurePeriod)
+			return nil
+		} else {
+			x.availability.BlackoutWithin(x.timingConfig.ServiceActivationFailureBlackoutPeriod)
+			log.Printf("WARN: failed on activating service: %v", err)
+		}
+	}
+	return ErrFailedOnServiceActivatingProcess	// failed service activation, continue off-service checks
+
+}
+
 func (x * ServiceRack) runPrepare() (err error) {
 	if nil ==  x.serviceController {
 		log.Printf("WARN: empty service controller (runPrepare)")
@@ -269,30 +304,8 @@ func (x * ServiceRack) runFrontNodeCheck() (nextHandler stateHandler, invokeAfte
 }
 
 func (x * ServiceRack) runServiceActivation() (nextHandler stateHandler, invokeAfter time.Duration) {
-	x.serviceActivating.Store(true)
-	defer x.serviceActivating.Store(false)
-	if false == x.concurServiceActivation(false) {
-		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()	// rejected, continue off-service checks
-	}
-	if nil ==  x.serviceController {
-		log.Printf("WARN: empty service controller (runServiceActivation)")
+	if nil == x.activateService(false) {
 		return x.runOnServiceSelfCheck, x.durationToNextOnServiceSelfCheck()
-	}
-	log.Printf("INFO: attempt to activate service (last-self-check-result: %v)", x.lastSelfCheckResult)
-	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.ActivateService, x.timingConfig.AcceptableServiceActivationPeriod)
-	if nil != err {
-		log.Printf("ERR: failed on invoke ActivateService: %v", err)
-	} else {
-		defer cancel()
-		err = <-c
-		if nil == err {
-			x.servicing.Store(true)
-			x.availability.AvailableWithin(x.timingConfig.AcceptableOnServiceSelfCheckFailurePeriod)
-			return x.runOnServiceSelfCheck, x.durationToNextOnServiceSelfCheck()
-		} else {
-			x.availability.BlackoutWithin(x.timingConfig.ServiceActivationFailureBlackoutPeriod)
-			log.Printf("WARN: failed on activating service: %v", err)
-		}
 	}
 	return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()	// failed service activation, continue off-service checks
 }
@@ -330,6 +343,7 @@ func (x * ServiceRack) stopService() {
 }
 
 // Answers service activation requests from remote peers.
+// Intent to be invoke by service communication adapter
 func (x * ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActivation bool) (accept bool) {
 	if true == x.serviceActivating.Load() {
 		return false
