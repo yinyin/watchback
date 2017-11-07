@@ -66,7 +66,7 @@ type ServiceRack struct {
 	timingConfig ServiceTimingConfig
 }
 
-func newServiceRack(localNodeId int32, serviceController ServiceControlAdapter, timingConfig *ServiceTimingConfig) (serviceRack *ServiceRack) {
+func NewServiceRack(localNodeId int32, serviceController ServiceControlAdapter, timingConfig *ServiceTimingConfig) (serviceRack *ServiceRack) {
 	serviceRack = &ServiceRack{
 		localNodeId:               localNodeId,
 		serviceController:         serviceController,
