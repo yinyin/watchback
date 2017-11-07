@@ -30,6 +30,7 @@ type ServiceTimingConfig struct {
 	OnServiceSelfCheckPeriod  time.Duration
 	OffServiceSelfCheckPeriod time.Duration
 
+	ServiceActivationSuccessExemptionPeriod time.Duration
 	ServiceActivationFailureBlackoutPeriod time.Duration
 	ServiceReleaseSuccessBlackoutPeriod    time.Duration
 	ServiceReleaseFailureBlackoutPeriod    time.Duration
@@ -180,10 +181,14 @@ func (x * ServiceRack) concurServiceActivation(forceActivation bool) (success bo
 }
 
 // Activate service and return success state.
-// This method does not check current servicing status. Must NOT invoke if service is running already.
 func (x * ServiceRack) activateService(forceActivation bool) (err error) {
 	if true == x.servicing.Load() {
-		return nil	// already running service
+		log.Printf("INFO: ignoring service activation: service already running (force=%v).", forceActivation)
+		return nil
+	}
+	if true == x.serviceActivating.Load() {
+		log.Printf("INFO: ignoring service activation: service activation in progress (force=%v).", forceActivation)
+		return nil
 	}
 	x.serviceActivating.Store(true)
 	defer x.serviceActivating.Store(false)
@@ -191,7 +196,7 @@ func (x * ServiceRack) activateService(forceActivation bool) (err error) {
 		return ErrCannotConcurServiceActivation	// rejected, continue off-service checks
 	}
 	if nil ==  x.serviceController {
-		log.Printf("WARN: empty service controller (runServiceActivation)")
+		log.Print("WARN: empty service controller (runServiceActivation)")
 		x.servicing.Store(true)
 		return nil
 	}
@@ -204,7 +209,7 @@ func (x * ServiceRack) activateService(forceActivation bool) (err error) {
 		err = <-c
 		if nil == err {
 			x.servicing.Store(true)
-			x.availability.AvailableWithin(x.timingConfig.AcceptableOnServiceSelfCheckFailurePeriod)
+			x.availability.ResetWithAvailableWithin(x.timingConfig.ServiceActivationSuccessExemptionPeriod)
 			return nil
 		} else {
 			x.availability.BlackoutWithin(x.timingConfig.ServiceActivationFailureBlackoutPeriod)
