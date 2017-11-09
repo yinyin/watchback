@@ -492,7 +492,7 @@ func TestServiceRack_durationToNextSelfChecks(t *testing.T) {
 }
 
 func prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t *testing.T, nodeMsgTimingCfg *NodeMessagingTimingConfig) (serviceRack *ServiceRack, nm [6]*mockNodeMessagingAdapter_C1, teardownFunc func()) {
-	serviceRack = NewServiceRack(0,5, nil, newDefaultServiceTimingConfigForTest_3())
+	serviceRack = NewServiceRack(0, 5, nil, newDefaultServiceTimingConfigForTest_3())
 	for i := 0; i < 6; i++ {
 		nodeId := int32(i + 1)
 		aux := newMockNodeMessagingAdapter_C1()

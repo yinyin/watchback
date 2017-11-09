@@ -113,7 +113,7 @@ func (c *ServiceTimingConfig) Advice() (advices []string) {
 }
 
 type ServiceRack struct {
-	serviceId	int32
+	serviceId int32
 
 	localNodeId       int32
 	serviceController ServiceControlAdapter
@@ -140,7 +140,7 @@ type ServiceRack struct {
 
 func NewServiceRack(serviceId int32, localNodeId int32, serviceController ServiceControlAdapter, timingConfig *ServiceTimingConfig) (serviceRack *ServiceRack) {
 	serviceRack = &ServiceRack{
-		serviceId: serviceId,
+		serviceId:                 serviceId,
 		localNodeId:               localNodeId,
 		serviceController:         serviceController,
 		frontNodes:                make([]*WorkerNode, 0),
