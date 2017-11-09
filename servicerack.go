@@ -13,8 +13,6 @@ var ErrCannotConcurServiceActivation = errors.New("rejected by peer node on conc
 var ErrFailedOnServiceActivatingProcess = errors.New("failed on running service activating process")
 var ErrTakeOverTimeout = errors.New("time-out on service take over")
 
-var EmptyServiceControllerStandbyPeriod = time.Minute * 10
-
 type ServiceTimingConfig struct {
 	AcceptablePreparePeriod             time.Duration
 	AcceptableOnServiceSelfCheckPeriod  time.Duration
