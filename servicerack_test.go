@@ -350,7 +350,7 @@ func TestServiceTimingConfig_Advice2(t *testing.T) {
 }
 
 func TestServiceRack_AddNode_1normal(t *testing.T) {
-	serviceRack := NewServiceRack(2, nil, newDefaultServiceTimingConfigForTest_1())
+	serviceRack := NewServiceRack(0, 2, nil, newDefaultServiceTimingConfigForTest_1())
 	nodeMsgTimingCfg := newDefaultNodeMessengingTimingConfigForTest_0()
 	node1, err1 := serviceRack.AddNode(1, newMockNodeMessagerNoop(1), nodeMsgTimingCfg)
 	validate_ServiceRack_AddNode_result(t, 1, false, node1, err1)
@@ -399,7 +399,7 @@ func demux_MockingRequestServiceActivationApprovalFactors(factorCode int32) (fro
 }
 
 func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
-	serviceRack := NewServiceRack(2, nil, newDefaultServiceTimingConfigForTest_1())
+	serviceRack := NewServiceRack(0, 2, nil, newDefaultServiceTimingConfigForTest_1())
 	var i int32
 	for i = 1; i < 4; i++ {
 		serviceRack.AddNode(i, newMockNodeMessagerNoop(i), newDefaultNodeMessengingTimingConfigForTest_0())
@@ -440,7 +440,7 @@ func TestServiceRack_RequestServiceActivationApproval(t *testing.T) {
 
 func TestServiceRack_nodeLoopStartStop(t *testing.T) {
 	var err error
-	serviceRack := NewServiceRack(2, nil, newDefaultServiceTimingConfigForTest_1())
+	serviceRack := NewServiceRack(0, 2, nil, newDefaultServiceTimingConfigForTest_1())
 	nodeMsgTimingCfg := newDefaultNodeMessengingTimingConfigForTest_1()
 	nc1 := newMockNodeMessagerClock(1)
 	_, err = serviceRack.AddNode(1, nc1, nodeMsgTimingCfg)
@@ -479,7 +479,7 @@ func TestServiceRack_nodeLoopStartStop(t *testing.T) {
 }
 
 func TestServiceRack_durationToNextSelfChecks(t *testing.T) {
-	serviceRack := NewServiceRack(2, nil, newDefaultServiceTimingConfigForTest_3())
+	serviceRack := NewServiceRack(0, 2, nil, newDefaultServiceTimingConfigForTest_3())
 	serviceRack.renewLastSelfCheckTimeStamp()
 	durOn := serviceRack.durationToNextOnServiceSelfCheck()
 	durOff := serviceRack.durationToNextOffServiceSelfCheck()
@@ -492,7 +492,7 @@ func TestServiceRack_durationToNextSelfChecks(t *testing.T) {
 }
 
 func prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t *testing.T, nodeMsgTimingCfg *NodeMessagingTimingConfig) (serviceRack *ServiceRack, nm [6]*mockNodeMessagingAdapter_C1, teardownFunc func()) {
-	serviceRack = NewServiceRack(5, nil, newDefaultServiceTimingConfigForTest_3())
+	serviceRack = NewServiceRack(0,5, nil, newDefaultServiceTimingConfigForTest_3())
 	for i := 0; i < 6; i++ {
 		nodeId := int32(i + 1)
 		aux := newMockNodeMessagingAdapter_C1()
@@ -805,7 +805,7 @@ func (m *mockServiceControlAdapter_P1) validate_eventSequence(t *testing.T, even
 
 func prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t *testing.T, nodeMsgTimingCfg *NodeMessagingTimingConfig) (serviceController *mockServiceControlAdapter_P1, serviceRack *ServiceRack, nm [3]*mockNodeMessagingAdapter_P1, teardownFunc func()) {
 	serviceController = newMockServiceControlAdapter_P1()
-	serviceRack = NewServiceRack(2, serviceController, newDefaultServiceTimingConfigForTest_P1())
+	serviceRack = NewServiceRack(0, 2, serviceController, newDefaultServiceTimingConfigForTest_P1())
 	for i := 0; i < 3; i++ {
 		nodeId := int32(i + 1)
 		aux := newMockNodeMessagingAdapter_P1()

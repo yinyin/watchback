@@ -113,6 +113,8 @@ func (c *ServiceTimingConfig) Advice() (advices []string) {
 }
 
 type ServiceRack struct {
+	serviceId	int32
+
 	localNodeId       int32
 	serviceController ServiceControlAdapter
 
@@ -136,8 +138,9 @@ type ServiceRack struct {
 	timingConfig ServiceTimingConfig
 }
 
-func NewServiceRack(localNodeId int32, serviceController ServiceControlAdapter, timingConfig *ServiceTimingConfig) (serviceRack *ServiceRack) {
+func NewServiceRack(serviceId int32, localNodeId int32, serviceController ServiceControlAdapter, timingConfig *ServiceTimingConfig) (serviceRack *ServiceRack) {
 	serviceRack = &ServiceRack{
+		serviceId: serviceId,
 		localNodeId:               localNodeId,
 		serviceController:         serviceController,
 		frontNodes:                make([]*WorkerNode, 0),
