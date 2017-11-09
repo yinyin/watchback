@@ -112,20 +112,26 @@ func (n *WorkerNode) RunMessagingLoop() {
 	n.messagingRunner.RunLoop()
 }
 
+func (n *WorkerNode) attemptInvokeMessagingOperation(attempt int, operationName string, callable callableFunc, timeout time.Duration) (err error) {
+	c, cancel, err := n.messagingRunner.AddCallableWithTimeout(callable, timeout)
+	if nil != err {
+		log.Printf("WARN: failed on invoke messaging operation %v (attempt=%v): %v", operationName, attempt, err)
+	} else {
+		defer cancel()
+		err = <-c
+		if nil == err {
+			return nil
+		}
+		log.Printf("WARN: result into error on messaging operation %v (attempt=%v): %v", operationName, attempt, err)
+		n.messenger.HasMessagingFailure(err)
+	}
+	return err
+}
+
 func (n *WorkerNode) invokeMessagingOperation(operationName string, callable callableFunc, timeout time.Duration) (err error) {
 	for attempt := 0; attempt < maxNodeMessagingOperationAttempt; attempt++ {
-		c, cancel, err := n.messagingRunner.AddCallableWithTimeout(callable, timeout)
-		if nil != err {
-			log.Printf("WARN: failed on invoke messaging operation %v (attempt=%v): %v", operationName, attempt, err)
-		} else {
-			defer cancel()
-			err = <-c
-			if nil != err {
-				log.Printf("WARN: result into error on messaging operation %v (attempt=%v): %v", operationName, attempt, err)
-				n.messenger.HasMessagingFailure(err)
-			} else {
-				return nil
-			}
+		if err := n.attemptInvokeMessagingOperation(attempt, operationName, callable, timeout); nil == err {
+			return nil
 		}
 	}
 	return ErrExceedMaxWorkerNodeMessagingOperationAttempt
