@@ -12,7 +12,6 @@ import (
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
 var ErrCannotConcurServiceActivation = errors.New("rejected by peer node on concur service activation")
 var ErrFailedOnServiceActivatingProcess = errors.New("failed on running service activating process")
-var ErrTakeOverTimeout = errors.New("time-out on service take over")
 
 type ServiceTimingConfig struct {
 	AcceptablePreparePeriod             time.Duration
@@ -450,15 +449,18 @@ func (x *ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiva
 }
 
 func (x *ServiceRack) ServiceTakeOver() (err error) {
+	log.Printf("INFO: [service-id: %d] attempt to take over service", x.serviceId)
 	ch := make(chan error, 1)
 	x.stateTransit.AppendDetour(func() {
 		ch <- x.activateService(true)
 	})
-	select {
-	case err := <-ch:
-		return err
+	err = <-ch
+	if nil == err {
+		log.Printf("INFO: [service-id: %d] service take over complete", x.serviceId)
+	} else {
+		log.Printf("INFO: [service-id: %d] service take over failed: %v", x.serviceId, err)
 	}
-	return ErrTakeOverTimeout
+	return err
 }
 
 // Answers service status query requests from remote peers.
