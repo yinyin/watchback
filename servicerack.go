@@ -3,9 +3,10 @@ package watchback
 import (
 	"errors"
 	"fmt"
-	uatomic "go.uber.org/atomic"
 	"log"
 	"time"
+
+	uatomic "go.uber.org/atomic"
 )
 
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
