@@ -264,6 +264,7 @@ func (x *ServiceRack) activateService(forceActivation bool) (err error) {
 	x.serviceActivating.Store(true)
 	defer x.serviceActivating.Store(false)
 	if false == x.concurServiceActivation(forceActivation) {
+		log.Printf("WARN: [service-id: %d] failed on concur service activation with peer nodes", x.serviceId)
 		return ErrCannotConcurServiceActivation // rejected, continue off-service checks
 	}
 	if nil == x.serviceController {
@@ -281,6 +282,7 @@ func (x *ServiceRack) activateService(forceActivation bool) (err error) {
 		if nil == err {
 			x.servicing.Store(true)
 			x.availability.ResetWithAvailableWithin(x.timingConfig.ServiceActivationSuccessExemptionPeriod)
+			log.Printf("INFO: [service-id: %d] activated service", x.serviceId)
 			return nil
 		} else {
 			x.availability.BlackoutWithin(x.timingConfig.ServiceActivationFailureBlackoutPeriod)
@@ -376,6 +378,7 @@ func (x *ServiceRack) runFrontNodeCheck() (nextHandler stateHandler, invokeAfter
 	if err := x.checkFrontNode(); nil != err {
 		if false == x.anyFrontNodeAvailable.Availability() {
 			if true == x.availability.Availability() {
+				log.Printf("INFO: [service-id: %d] attempt to activate service: none of front node available.", x.serviceId)
 				return x.runServiceActivation, 0
 			}
 			log.Printf("INFO: [service-id: %d] not acquire service: all front node not available but local is not available, too.", x.serviceId)
@@ -409,6 +412,7 @@ func (x *ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter
 		err = <-c
 		if nil == err {
 			x.availability.BlackoutWithin(x.timingConfig.ServiceReleaseSuccessBlackoutPeriod)
+			log.Printf("INFO: [service-id: %d] service released", x.serviceId)
 		} else {
 			x.availability.BlackoutWithin(x.timingConfig.ServiceReleaseFailureBlackoutPeriod)
 			log.Printf("WARN: [service-id: %d] failed on releasing service: %v", x.serviceId, err)
