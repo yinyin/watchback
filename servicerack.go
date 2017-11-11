@@ -403,6 +403,7 @@ func (x *ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter
 		x.servicing.Store(false)
 		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
 	}
+	log.Printf("INFO: [service-id: %d] going to release service", x.serviceId)
 	c, cancel, err := x.controlRunner.AddCallableWithTimeout(x.serviceController.ReleaseService, x.timingConfig.AcceptableServiceReleasingPeriod)
 	if nil != err {
 		log.Printf("ERR: [service-id: %d] failed on invoke ReleaseService: %v", x.serviceId, err)
@@ -424,6 +425,7 @@ func (x *ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter
 
 func (x *ServiceRack) stopService() {
 	if true == x.servicing.Load() {
+		log.Printf("INFO: [service-id: %d] attempt to stop service", x.serviceId)
 		x.stateTransit.AppendDetour(func() {
 			x.runServiceRelease()
 		})
@@ -472,12 +474,15 @@ func (x *ServiceRack) IsOnService() (onService bool) {
 	return false
 }
 
-func (x *ServiceRack) Close() {
+func (x *ServiceRack) Close() (err error) {
 	x.stopService()
+	ch := make(chan error, 1)
 	x.stateTransit.AppendDetour(func() {
-		x.runClose()
+		ch <- x.runClose()
 	})
+	err = <- ch
 	x.stateTransit.Stop()
+	return err
 }
 
 func (x *ServiceRack) StateTransitionLoop() (err error) {
