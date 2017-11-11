@@ -480,7 +480,7 @@ func (x *ServiceRack) Close() (err error) {
 	x.stateTransit.AppendDetour(func() {
 		ch <- x.runClose()
 	})
-	err = <- ch
+	err = <-ch
 	x.stateTransit.Stop()
 	return err
 }
