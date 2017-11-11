@@ -451,7 +451,7 @@ func (x *ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiva
 	if true == x.serviceActivating.Load() {
 		return false
 	}
-	localAvailability :=x.availability.Availability()
+	localAvailability := x.availability.Availability()
 	if (false == forceActivation) && (true == localAvailability) {
 		if true == x.servicing.Load() {
 			return false
