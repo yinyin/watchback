@@ -233,8 +233,11 @@ func (x *ServiceRack) checkFrontNode() (err error) {
 		if true == onService {
 			x.anyFrontNodeAvailable.AvailableWithin(x.timingConfig.AcceptableFrontNodeEmptyPeriod)
 			return nil
+		} else {
+			log.Printf("INFO: [service-id: %d] peer node off-service: (id=%v)", x.serviceId, node.nodeId)
 		}
 	}
+	log.Printf("WARN: [service-id: %d] no front node in service", x.serviceId)
 	return ErrNoFrontNodeInService
 }
 
@@ -246,6 +249,8 @@ func (x *ServiceRack) concurServiceActivation(forceActivation bool) (success boo
 		} else if false == isApproval {
 			log.Printf("INFO: [service-id: %d] service activation request rejected by node %v", x.serviceId, node.nodeId)
 			return false
+		} else {
+			log.Printf("INFO: [service-id: %d] service activation request agreed by node %v", x.serviceId, node.nodeId)
 		}
 	}
 	return true
@@ -324,6 +329,7 @@ func (x *ServiceRack) runClose() (err error) {
 
 func (x *ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
 	if false == x.servicing.Load() {
+		log.Printf("INFO: [service-id: %d] redirect from OnServiceSelfCheck to OffServiceSelfCheck", x.serviceId)
 		return x.runOffServiceSelfCheck()
 	}
 	x.renewLastSelfCheckTimeStamp()
@@ -347,6 +353,7 @@ func (x *ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invokeA
 
 func (x *ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
 	if true == x.servicing.Load() {
+		log.Printf("INFO: [service-id: %d] redirect from OffServiceSelfCheck to OnServiceSelfCheck", x.serviceId)
 		return x.runOnServiceSelfCheck()
 	}
 	x.renewLastSelfCheckTimeStamp()
@@ -398,8 +405,13 @@ func (x *ServiceRack) runServiceActivation() (nextHandler stateHandler, invokeAf
 }
 
 func (x *ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter time.Duration) {
-	if (false == x.servicing.Load()) || (nil == x.serviceController) {
-		log.Printf("WARN: [service-id: %d] empty service controller (runServiceRelease)", x.serviceId)
+	if serviceRunning := x.servicing.Load(); (false == serviceRunning) || (nil == x.serviceController) {
+		if nil == x.serviceController {
+			log.Printf("WARN: [service-id: %d] empty service controller (runServiceRelease)", x.serviceId)
+		}
+		if false == serviceRunning {
+			log.Printf("INFO: [service-id: %d] service is not running (runServiceRelease)", x.serviceId)
+		}
 		x.servicing.Store(false)
 		return x.runOffServiceSelfCheck, x.durationToNextOffServiceSelfCheck()
 	}
@@ -410,6 +422,7 @@ func (x *ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter
 		x.availability.BlackoutWithin(x.timingConfig.ServiceReleaseFailureBlackoutPeriod)
 	} else {
 		defer cancel()
+		log.Printf("INFO: [service-id: %d] waiting for service release", x.serviceId)
 		err = <-c
 		if nil == err {
 			x.availability.BlackoutWithin(x.timingConfig.ServiceReleaseSuccessBlackoutPeriod)
@@ -438,7 +451,8 @@ func (x *ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiva
 	if true == x.serviceActivating.Load() {
 		return false
 	}
-	if (false == forceActivation) && (true == x.availability.Availability()) {
+	localAvailability :=x.availability.Availability()
+	if (false == forceActivation) && (true == localAvailability) {
 		if true == x.servicing.Load() {
 			return false
 		}
@@ -446,6 +460,7 @@ func (x *ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActiva
 			return false
 		}
 	}
+	log.Printf("INFO: [service-id: %d] about to approve service activation: local-availability=%v, peer-node-id=%d, force=%v, ", x.serviceId, localAvailability, nodeId, forceActivation)
 	x.stopService()
 	return true
 }
@@ -468,9 +483,12 @@ func (x *ServiceRack) ServiceTakeOver() (err error) {
 // Answers service status query requests from remote peers.
 // Intent to be invoke by service communication adapter
 func (x *ServiceRack) IsOnService() (onService bool) {
-	if x.servicing.Load() && x.availability.Availability() {
+	runningService := x.servicing.Load()
+	localAvailability := x.availability.Availability()
+	if runningService && localAvailability {
 		return true
 	}
+	log.Printf("INFO: [service-id: %d] reply off-service for IsOnService query: running-service=%v, local-availabity=%v", x.serviceId, runningService, localAvailability)
 	return false
 }
 
