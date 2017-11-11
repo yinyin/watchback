@@ -26,7 +26,7 @@ func (m *mockCallable1) wait() {
 	select {
 	case <-m.finished:
 	case <-time.After(time.Second * 15):
-		fmt.Printf("WARN: wait over 15 seconds. left wait() method.")
+		fmt.Println("WARN: wait over 15 seconds. left wait() method.")
 	}
 }
 
@@ -44,9 +44,9 @@ func (m *mockCallable1) sleep10_wo_context(ctx context.Context) (err error) {
 func (m *mockCallable1) sleep10_w_context(ctx context.Context) (err error) {
 	select {
 	case <-time.After(time.Second * 10):
-		fmt.Printf("after 10 seconds (sleep10_w_context)")
+		fmt.Println("after 10 seconds (sleep10_w_context)")
 	case <-ctx.Done():
-		fmt.Printf("context done")
+		fmt.Println("context done")
 		return errors.New("time-out")
 	}
 	m.finished <- nil
@@ -92,7 +92,7 @@ func validateCallableInvokeResult(t *testing.T, callableName string, mockFinishC
 		}
 	case <-time.After(time.Second * 5):
 		if !expectNoResult {
-			t.Error("cannot have result from result-channel of %v bundle", callableName)
+			t.Errorf("cannot have result from result-channel of %v bundle", callableName)
 		}
 	}
 }
