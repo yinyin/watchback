@@ -140,11 +140,13 @@ func (n *WorkerNode) invokeMessagingOperation(operationName string, callable cal
 func (n *WorkerNode) requestIsOnServiceCheck(ctx context.Context) (err error) {
 	onService, err := n.messenger.IsOnService(ctx)
 	if nil != err {
+		log.Printf("WARN: failed on IsOnService query (nodeId=%v): %v", n.nodeId, err)
 		return err
 	}
 	if onService {
 		n.serviceOn.AvailableWithin(n.messagingTimingConfig.FlexOnServiceCheckPeriod)
 	} else {
+		log.Printf("WARN: peer given off-service response on IsOnService query (nodeId=%v)", n.nodeId)
 		select {
 		case <-ctx.Done():
 		default:
