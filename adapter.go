@@ -2,6 +2,7 @@ package watchback
 
 import "context"
 
+// NodeMessagingAdapter represents communication interface of remote nodes
 type NodeMessagingAdapter interface {
 	// Notice adapter there is an error on messaging operation
 	HasMessagingFailure(err error)
@@ -17,7 +18,7 @@ type NodeMessagingAdapter interface {
 	Close(ctx context.Context) (err error)
 }
 
-// Represent a local instance of service.
+// ServiceControlAdapter represents a local instance of service.
 type ServiceControlAdapter interface {
 	// Perform initialize. Service rack status is not ready yet when calling this function.
 	// Return value will be logged and treated as self-check result.
