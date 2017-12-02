@@ -8,9 +8,13 @@ import (
 	"time"
 )
 
+// ErrBundleQueueFulled is raised when callable bundle queue is fulled and not able to complete requested operation
 var ErrBundleQueueFulled = errors.New("callable bundle queue is fulled")
+
+// ErrCallableTimeout is raised when callable not able to complete before context timeout
 var ErrCallableTimeout = errors.New("context of callable done before callable complete")
 
+// ExpiredCallableResultCollectPeriod is a predefined period to collect result of callable on callable operation timeout
 const ExpiredCallableResultCollectPeriod = time.Second * 3
 
 type callableFunc func(ctx context.Context) (err error)
