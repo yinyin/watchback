@@ -71,7 +71,7 @@ func validate_ServiceRack_AddNode_result(t *testing.T, expNodeId int32, expError
 	// validate Node-Id and Messenger
 	if expNodeId < 0 {
 		if workerNode != nil {
-			t.Errorf("expect to have empty WorkerNode but having %v instead.")
+			t.Errorf("expect to have empty WorkerNode but having %v instead.", workerNode)
 		}
 	} else if nil == workerNode {
 		t.Errorf("expect to have WorkerNode with NodeId=%v but having empty one instead.", expNodeId)
@@ -450,7 +450,7 @@ func TestServiceRack_nodeLoopStartStop(t *testing.T) {
 	nc2 := newMockNodeMessagerClock(2)
 	_, err = serviceRack.AddNode(2, nc2, nodeMsgTimingCfg)
 	if nil != err {
-		t.Fatalf("cannot add node 2 to service rack: $v", err)
+		t.Fatalf("cannot add node 2 to service rack: %v", err)
 	}
 	nc3 := newMockNodeMessagerClock(3)
 	_, err = serviceRack.AddNode(3, nc3, nodeMsgTimingCfg)
@@ -471,7 +471,7 @@ func TestServiceRack_nodeLoopStartStop(t *testing.T) {
 		t.Errorf("node 1 clock out of expected range: %v, %v, %v", tStart, nc1.lastClose, tEnd)
 	}
 	if !nc2.lastClose.IsZero() {
-		t.Error("node 2 clock unexpected: %v", nc2.lastClose)
+		t.Errorf("node 2 clock unexpected: %v", nc2.lastClose)
 	}
 	if nc3.lastClose.After(tEnd) || nc3.lastClose.Before(tStart) {
 		t.Errorf("node 3 clock out of expected range: %v, %v, %v", tStart, nc3.lastClose, tEnd)
