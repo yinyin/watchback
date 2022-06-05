@@ -32,7 +32,7 @@ func newStateTransporter() (t stateTransporter) {
 func (t *stateTransporter) running() (r bool) {
 	runningFlag := atomic.LoadInt32(&t.runningFlag)
 	stoppingFlag := atomic.LoadInt32(&t.stoppingFlag)
-	if (nil != t.detours) && (1 == runningFlag) && (0 == stoppingFlag) {
+	if (t.detours != nil) && (runningFlag == 1) && (stoppingFlag == 0) {
 		return true
 	}
 	return false

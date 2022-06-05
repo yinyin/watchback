@@ -37,7 +37,7 @@ func (b *callableBundle) setErrorState(err error, ok bool) {
 	if nil != err {
 		log.Printf("invoked bundle %v completed but returns an error: %v.", b, err)
 		b.resultStore <- err
-	} else if true != ok {
+	} else if !ok {
 		log.Printf("invoked bundle %v completed but failed to fetch error state from channel.", b)
 		b.resultStore <- fmt.Errorf("failed on fetch error state for %v", b)
 	} else {

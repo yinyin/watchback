@@ -199,7 +199,7 @@ func (x *ServiceRack) renewLastSelfCheckTimeStamp() {
 
 func (x *ServiceRack) durationToNextSelfCheck(d time.Duration) (result time.Duration) {
 	nextCheckAt := x.lastSelfCheckAt.Add(d)
-	result = nextCheckAt.Sub(time.Now())
+	result = time.Until(nextCheckAt)
 	if result < 0 {
 		result = 0
 	}
@@ -230,7 +230,7 @@ func (x *ServiceRack) checkFrontNode() (err error) {
 		if nil != err {
 			log.Printf("WARN: [service-id: %d] caught err on request IsOnService() on node: (id=%v)", x.serviceId, node.nodeId)
 		}
-		if true == onService {
+		if onService {
 			x.anyFrontNodeAvailable.AvailableWithin(x.timingConfig.AcceptableFrontNodeEmptyPeriod)
 			return nil
 		} else {
@@ -246,7 +246,7 @@ func (x *ServiceRack) concurServiceActivation(forceActivation bool) (success boo
 	for _, node := range x.allNodes {
 		if isApproval, err := node.RequestServiceActivationApproval(x.localNodeId, forceActivation); nil != err {
 			log.Printf("WARN: [service-id: %d] failed on requesting service activiation approval from node %v: %v", x.serviceId, node.nodeId, err)
-		} else if false == isApproval {
+		} else if !isApproval {
 			log.Printf("INFO: [service-id: %d] service activation request rejected by node %v", x.serviceId, node.nodeId)
 			return false
 		} else {
@@ -258,17 +258,17 @@ func (x *ServiceRack) concurServiceActivation(forceActivation bool) (success boo
 
 // Activate service and return success state.
 func (x *ServiceRack) activateService(forceActivation bool) (err error) {
-	if true == x.servicing.Load() {
+	if x.servicing.Load() {
 		log.Printf("INFO: [service-id: %d] ignoring service activation: service already running (force=%v).", x.serviceId, forceActivation)
 		return nil
 	}
-	if true == x.serviceActivating.Load() {
+	if x.serviceActivating.Load() {
 		log.Printf("INFO: [service-id: %d] ignoring service activation: service activation in progress (force=%v).", x.serviceId, forceActivation)
 		return nil
 	}
 	x.serviceActivating.Store(true)
 	defer x.serviceActivating.Store(false)
-	if false == x.concurServiceActivation(forceActivation) {
+	if !x.concurServiceActivation(forceActivation) {
 		log.Printf("WARN: [service-id: %d] failed on concur service activation with peer nodes", x.serviceId)
 		return ErrCannotConcurServiceActivation // rejected, continue off-service checks
 	}
@@ -328,7 +328,7 @@ func (x *ServiceRack) runClose() (err error) {
 }
 
 func (x *ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
-	if false == x.servicing.Load() {
+	if !x.servicing.Load() {
 		log.Printf("INFO: [service-id: %d] redirect from OnServiceSelfCheck to OffServiceSelfCheck", x.serviceId)
 		return x.runOffServiceSelfCheck()
 	}
@@ -352,7 +352,7 @@ func (x *ServiceRack) runOnServiceSelfCheck() (nextHandler stateHandler, invokeA
 }
 
 func (x *ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
-	if true == x.servicing.Load() {
+	if x.servicing.Load() {
 		log.Printf("INFO: [service-id: %d] redirect from OffServiceSelfCheck to OnServiceSelfCheck", x.serviceId)
 		return x.runOnServiceSelfCheck()
 	}
@@ -383,8 +383,8 @@ func (x *ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invoke
 
 func (x *ServiceRack) runFrontNodeCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
 	if err := x.checkFrontNode(); nil != err {
-		if false == x.anyFrontNodeAvailable.Availability() {
-			if true == x.availability.Availability() {
+		if !x.anyFrontNodeAvailable.Availability() {
+			if x.availability.Availability() {
 				log.Printf("INFO: [service-id: %d] attempt to activate service: none of front node available.", x.serviceId)
 				return x.runServiceActivation, 0
 			}
@@ -405,11 +405,11 @@ func (x *ServiceRack) runServiceActivation() (nextHandler stateHandler, invokeAf
 }
 
 func (x *ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter time.Duration) {
-	if serviceRunning := x.servicing.Load(); (false == serviceRunning) || (nil == x.serviceController) {
+	if serviceRunning := x.servicing.Load(); (!serviceRunning) || (nil == x.serviceController) {
 		if nil == x.serviceController {
 			log.Printf("WARN: [service-id: %d] empty service controller (runServiceRelease)", x.serviceId)
 		}
-		if false == serviceRunning {
+		if !serviceRunning {
 			log.Printf("INFO: [service-id: %d] service is not running (runServiceRelease)", x.serviceId)
 		}
 		x.servicing.Store(false)
@@ -437,7 +437,7 @@ func (x *ServiceRack) runServiceRelease() (nextHandler stateHandler, invokeAfter
 }
 
 func (x *ServiceRack) stopService() {
-	if true == x.servicing.Load() {
+	if x.servicing.Load() {
 		log.Printf("INFO: [service-id: %d] attempt to stop service", x.serviceId)
 		x.stateTransit.AppendDetour(func() {
 			x.runServiceRelease()
@@ -448,15 +448,15 @@ func (x *ServiceRack) stopService() {
 // Answers service activation requests from remote peers.
 // Intent to be invoke by service communication adapter
 func (x *ServiceRack) RequestServiceActivationApproval(nodeId int32, forceActivation bool) (accept bool) {
-	if true == x.serviceActivating.Load() {
+	if x.serviceActivating.Load() {
 		return false
 	}
 	localAvailability := x.availability.Availability()
-	if (false == forceActivation) && (true == localAvailability) {
-		if true == x.servicing.Load() {
+	if (!forceActivation) && (localAvailability) {
+		if x.servicing.Load() {
 			return false
 		}
-		if false == x.isFrontNodeId(nodeId) {
+		if !x.isFrontNodeId(nodeId) {
 			return false
 		}
 	}
