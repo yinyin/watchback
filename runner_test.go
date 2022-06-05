@@ -22,6 +22,7 @@ func newMockCallable1() (m *mockCallable1) {
 	}
 }
 
+/*
 func (m *mockCallable1) wait() {
 	select {
 	case <-m.finished:
@@ -29,6 +30,7 @@ func (m *mockCallable1) wait() {
 		fmt.Println("WARN: wait over 15 seconds. left wait() method.")
 	}
 }
+*/
 
 func (m *mockCallable1) noop(ctx context.Context) (err error) {
 	m.finished <- nil

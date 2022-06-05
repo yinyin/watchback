@@ -374,22 +374,22 @@ var expect_RequestServiceActivationApprovalResult = [16]bool{
 }
 
 func demux_MockingRequestServiceActivationApprovalFactors(factorCode int32) (frontNode, forceActivation, localAvailable, isServicing, expectAccept bool) {
-	if 0 != (factorCode & 0x01) {
+	if (factorCode & 0x01) != 0 {
 		frontNode = true
 	} else {
 		frontNode = false
 	}
-	if 0 != (factorCode & 0x02) {
+	if (factorCode & 0x02) != 0 {
 		forceActivation = true
 	} else {
 		forceActivation = false
 	}
-	if 0 != (factorCode & 0x04) {
+	if (factorCode & 0x04) != 0 {
 		localAvailable = true
 	} else {
 		localAvailable = false
 	}
-	if 0 != (factorCode & 0x08) {
+	if (factorCode & 0x08) != 0 {
 		isServicing = true
 	} else {
 		isServicing = false
@@ -601,13 +601,13 @@ func TestServiceRack_concurServiceActivation(t *testing.T) {
 		}
 		for i := 0; i < 6; i++ {
 			nodeId := i + 1
-			if 5 == nodeId {
+			if nodeId == 5 {
 				continue // skip local node
 			}
-			if false != nm[i].paramBool1 {
+			if nm[i].paramBool1 {
 				t.Errorf("expecting reciving force-activation false (node-id: %v): %v", nodeId, nm[i].paramBool1)
 			}
-			if 5 != nm[i].paramInt32b1 {
+			if nm[i].paramInt32b1 != 5 {
 				t.Errorf("expecting reciving remote node id 5 (node-id: %v): %v", nodeId, nm[i].paramInt32b1)
 			}
 		}
@@ -650,21 +650,21 @@ func TestServiceRack_concurServiceActivation(t *testing.T) {
 		}
 		for i := 0; i < 6; i++ {
 			nodeId := i + 1
-			if 5 == nodeId {
+			if nodeId == 5 {
 				continue
 			}
-			if 1 == nodeId {
-				if true != nm[i].paramBool1 {
+			if nodeId == 1 {
+				if !nm[i].paramBool1 {
 					t.Errorf("expecting reciving force-activation true (node-Id: %v): %v", nodeId, nm[i].paramBool1)
 				}
-				if 5 != nm[i].paramInt32b1 {
+				if nm[i].paramInt32b1 != 5 {
 					t.Errorf("expecting reciving remote node id 5 (node-Id: %v): %v", nodeId, nm[i].paramInt32b1)
 				}
 			} else {
-				if false != nm[i].paramBool1 {
+				if nm[i].paramBool1 {
 					t.Errorf("expecting reciving force-activation false (not traversal) (node-Id: %v): %v", nodeId, nm[i].paramBool1)
 				}
-				if -1 != nm[i].paramInt32b1 {
+				if nm[i].paramInt32b1 != -1 {
 					t.Errorf("expecting reciving remote node id -1 (not traversal) (node-Id: %v): %v", nodeId, nm[i].paramInt32b1)
 				}
 			}
@@ -699,6 +699,7 @@ func (m *mockNodeMessagingAdapter_P1) IsOnService(ctx context.Context) (onServic
 	return false, nil
 }
 
+/*
 func (m *mockNodeMessagingAdapter_P1) expectIsOnService(t *testing.T) {
 	select {
 	case <-m.tqueueIsOnService:
@@ -706,6 +707,7 @@ func (m *mockNodeMessagingAdapter_P1) expectIsOnService(t *testing.T) {
 		t.Fatal("blocked at IsOnService")
 	}
 }
+*/
 
 func (m *mockNodeMessagingAdapter_P1) RequestServiceActivationApproval(ctx context.Context, requesterNodeId int32, forceActivation bool) (isApproved bool, err error) {
 	select {
@@ -797,7 +799,7 @@ func (m *mockServiceControlAdapter_P1) validate_eventSequence(t *testing.T, even
 			t.Fatalf("unexpected event id: [index=%v] %v != %v", idx, evnt, eventSeq[idx])
 		}
 		idx++
-		if -9 == eventSeq[idx] {
+		if eventSeq[idx] == -9 {
 			break
 		}
 	}

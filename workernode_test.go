@@ -90,7 +90,7 @@ func TestNodeMessagingTimingConfig_Advice2(t *testing.T) {
 
 func TestWorkerNode_NodeId(t *testing.T) {
 	n := newWorkerNode(3, nil, newDefaultNodeMessengingTimingConfigForTest_0())
-	if nodeId := n.NodeId(); 3 != nodeId {
+	if nodeId := n.NodeId(); nodeId != 3 {
 		t.Errorf("unexpected node id: %v", nodeId)
 	}
 }
@@ -148,7 +148,7 @@ func TestWorkerNode_IsOnService_allError1(t *testing.T) {
 	if maxNodeMessagingOperationAttempt != mock.countHasMessagingFailure {
 		t.Errorf("expect countHasMessagingFailure=%v: %v", maxNodeMessagingOperationAttempt, mock.countHasMessagingFailure)
 	}
-	if 1 != mock.countClose {
+	if mock.countClose != 1 {
 		t.Errorf("expect countClose=1: %v", mock.countClose)
 	}
 }
@@ -208,7 +208,7 @@ func newMockNodeMessagingAdapter_C1() (m *mockNodeMessagingAdapter_C1) {
 
 func validate_IsOnService(t *testing.T, n *WorkerNode, t0 time.Time, stepName string, expectRunning bool, expectError bool) {
 	running, err := n.IsOnService()
-	cost := time.Now().Sub(t0)
+	cost := time.Since(t0)
 	log.Printf("cost until %v: %v", stepName, cost)
 	if expectRunning != running {
 		t.Fatalf("unexpect result of %v (expect running: %v): %v (err=%v)", stepName, expectRunning, running, err)
