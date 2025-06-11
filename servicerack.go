@@ -12,6 +12,7 @@ import (
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
 var ErrCannotConcurServiceActivation = errors.New("rejected by peer node on concur service activation")
 var ErrFailedOnServiceActivatingProcess = errors.New("failed on running service activating process")
+var ErrNotPartOfServiceFrontNode = errors.New("not part of front node for providing service")
 
 type ServiceTimingConfig struct {
 	AcceptablePreparePeriod             time.Duration
@@ -258,6 +259,10 @@ func (x *ServiceRack) concurServiceActivation(forceActivation bool) (success boo
 
 // Activate service and return success state.
 func (x *ServiceRack) activateService(forceActivation bool) (err error) {
+	if !x.frontNodesReady {
+		log.Printf("NOTICE: [service-id: %d] ignoring service activation: not part of service rack (force=%v).", x.serviceId, forceActivation)
+		return ErrNotPartOfServiceFrontNode
+	}
 	if x.servicing.Load() {
 		log.Printf("INFO: [service-id: %d] ignoring service activation: service already running (force=%v).", x.serviceId, forceActivation)
 		return nil
@@ -383,7 +388,9 @@ func (x *ServiceRack) runOffServiceSelfCheck() (nextHandler stateHandler, invoke
 
 func (x *ServiceRack) runFrontNodeCheck() (nextHandler stateHandler, invokeAfter time.Duration) {
 	if err := x.checkFrontNode(); nil != err {
-		if !x.anyFrontNodeAvailable.Availability() {
+		if !x.frontNodesReady {
+			log.Printf("INFO: [service-id: %d] front node check failed but local node is not part of service rack.", x.serviceId)
+		} else if !x.anyFrontNodeAvailable.Availability() {
 			if x.availability.Availability() {
 				log.Printf("INFO: [service-id: %d] attempt to activate service: none of front node available.", x.serviceId)
 				return x.runServiceActivation, 0
