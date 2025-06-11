@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	uatomic "go.uber.org/atomic"
+	"sync/atomic"
 )
 
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
@@ -128,8 +128,8 @@ type ServiceRack struct {
 	externalOverrideAvailable availabilityLogic
 	anyFrontNodeAvailable     availabilityLogic
 
-	serviceActivating uatomic.Bool
-	servicing         uatomic.Bool
+	serviceActivating atomic.Bool
+	servicing         atomic.Bool
 
 	lastSelfCheckAt     time.Time
 	lastSelfCheckResult error
