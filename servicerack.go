@@ -487,6 +487,12 @@ func (x *ServiceRack) ServiceTakeOver() (err error) {
 	return err
 }
 
+func (x *ServiceRack) ServiceRelease() (err error) {
+	log.Printf("INFO: [service-id: %d] having service release request", x.serviceId)
+	x.stopService()
+	return
+}
+
 // Answers service status query requests from remote peers.
 // Intent to be invoke by service communication adapter
 func (x *ServiceRack) IsOnService() (onService bool) {
