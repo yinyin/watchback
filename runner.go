@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 )
 
@@ -13,6 +14,9 @@ var ErrBundleQueueFulled = errors.New("callable bundle queue is fulled")
 
 // ErrCallableTimeout is raised when callable not able to complete before context timeout
 var ErrCallableTimeout = errors.New("context of callable done before callable complete")
+
+// ErrBundleRunnerDrained is raised when no available bundle runner is found
+var ErrBundleRunnerDrained = errors.New("no available bundle runner")
 
 // ExpiredCallableResultCollectPeriod is a predefined period to collect result of callable on callable operation timeout
 const ExpiredCallableResultCollectPeriod = time.Second * 3
@@ -52,7 +56,8 @@ func newCallableBundleRunner(bufferSize int) (runner callableBundleRunner) {
 	return make(chan *callableBundle, bufferSize)
 }
 
-func (r callableBundleRunner) runCallable(ch chan<- error, bundle *callableBundle) {
+func (r callableBundleRunner) runCallable(remainRunnerCount *atomic.Int32, ch chan<- error, bundle *callableBundle) {
+	defer remainRunnerCount.Add(1)
 	err := bundle.callable(bundle.ctx)
 	ch <- err
 	close(ch)
@@ -82,9 +87,17 @@ func (r callableBundleRunner) Close() {
 }
 
 func (r callableBundleRunner) RunLoop() {
+	var remainRunnerCount atomic.Int32
+	remainRunnerCount.Store(32)
 	for bundle := range r {
+		if remainCnt := remainRunnerCount.Load(); remainCnt < 1 {
+			log.Printf("cannot allocate runner for bundle %v.", bundle)
+			bundle.setErrorState(ErrBundleRunnerDrained, true)
+			continue
+		}
+		remainRunnerCount.Add(-1)
 		ch := make(chan error, 1)
-		go r.runCallable(ch, bundle)
+		go r.runCallable(&remainRunnerCount, ch, bundle)
 		select {
 		case err, ok := <-ch:
 			bundle.setErrorState(err, ok)
