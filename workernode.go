@@ -101,11 +101,11 @@ func (n *WorkerNode) Close() {
 	c, cancel, err := n.messagingRunner.AddCallableWithTimeout(n.messenger.Close, n.messagingTimingConfig.ExpectMessengerCloseWithin)
 	if nil != err {
 		log.Printf("WARN: cannot invoke Close() of messenger (nodeId=%v): %v", n.nodeId, err)
-	} else {
-		defer cancel()
-		<-c
-		n.messagingRunner.Close()
+		return
 	}
+	defer cancel()
+	<-c
+	n.messagingRunner.Close()
 }
 
 func (n *WorkerNode) RunMessagingLoop() {
