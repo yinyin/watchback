@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"sync"
 	"testing"
 	"time"
 )
@@ -131,9 +132,11 @@ func (m *mockNodeMessagingAdapter_AllError) Close(ctx context.Context) (err erro
 }
 
 func TestWorkerNode_IsOnService_allError1(t *testing.T) {
+	var waitGroup sync.WaitGroup
 	mock := newMockNodeMessagingAdapter_AllError("allerror-1")
 	n := newWorkerNode(3, mock, newDefaultNodeMessengingTimingConfigForTest_1())
-	go n.RunMessagingLoop()
+	waitGroup.Add(1)
+	go n.RunMessagingLoop(&waitGroup)
 	running, err := n.IsOnService()
 	if ErrExceedMaxWorkerNodeMessagingOperationAttempt != err {
 		t.Errorf("expect ErrExceedMaxWorkerNodeMessagingOperationAttempt but get: %v", err)
@@ -225,9 +228,11 @@ func validate_IsOnService(t *testing.T, n *WorkerNode, t0 time.Time, stepName st
 }
 
 func TestWorkerNode_IsOnService_c1a(t *testing.T) {
+	var waitGroup sync.WaitGroup
 	mock := newMockNodeMessagingAdapter_C1()
 	n := newWorkerNode(3, mock, newDefaultNodeMessengingTimingConfigForTest_2())
-	go n.RunMessagingLoop()
+	waitGroup.Add(1)
+	go n.RunMessagingLoop(&waitGroup)
 	defer n.Close()
 	t0 := time.Now()
 	validate_IsOnService(t, n, t0, "IsOnService_onService1:1-not-running", false, false)
@@ -250,6 +255,7 @@ func TestWorkerNode_IsOnService_c1a(t *testing.T) {
 	mock.resultBool1 = true
 	mock.setError(true)
 	validate_IsOnService(t, n, t0, "IsOnService_onService1:8-on-error", false, true)
+	// waitGroup.Wait()
 }
 
 func validate_RequestServiceActivationApproval(t *testing.T, n *WorkerNode, mock *mockNodeMessagingAdapter_C1, stepName string, sleepPeriod time.Duration, requesterNodeId int32, forceActivation, mockAccept, mockError, expectError bool) {
@@ -275,13 +281,16 @@ func validate_RequestServiceActivationApproval(t *testing.T, n *WorkerNode, mock
 }
 
 func TestWorkerNode_RequestServiceActivationApproval_c1a(t *testing.T) {
+	var waitGroup sync.WaitGroup
 	mock := newMockNodeMessagingAdapter_C1()
 	n := newWorkerNode(3, mock, newDefaultNodeMessengingTimingConfigForTest_2())
-	go n.RunMessagingLoop()
+	waitGroup.Add(1)
+	go n.RunMessagingLoop(&waitGroup)
 	defer n.Close()
 	validate_RequestServiceActivationApproval(t, n, mock, "RequestServiceActivationApproval-1-success", 0, 2, false, true, false, false)
 	validate_RequestServiceActivationApproval(t, n, mock, "RequestServiceActivationApproval-2-reject", 0, 2, false, false, false, false)
 	validate_RequestServiceActivationApproval(t, n, mock, "RequestServiceActivationApproval-3-force", 0, 2, true, true, false, false)
 	validate_RequestServiceActivationApproval(t, n, mock, "RequestServiceActivationApproval-4-exception", 0, 2, false, false, true, true)
 	validate_RequestServiceActivationApproval(t, n, mock, "RequestServiceActivationApproval-5-timeout", time.Second*5, 2, false, false, false, true)
+	// waitGroup.Wait()
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -108,8 +109,11 @@ func (n *WorkerNode) Close() {
 	n.messagingRunner.Close()
 }
 
-func (n *WorkerNode) RunMessagingLoop() {
-	n.messagingRunner.RunLoop()
+func (n *WorkerNode) RunMessagingLoop(waitGroup *sync.WaitGroup) {
+	// defer waitGroup.Done()
+	// waitGroup.Add(1)
+	// The waitGroup will be done in `n.messagingRunner.RunLoop()`
+	n.messagingRunner.RunLoop(waitGroup)
 }
 
 func (n *WorkerNode) attemptInvokeMessagingOperation(attempt int, operationName string, callable callableFunc, timeout time.Duration) (err error) {

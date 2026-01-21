@@ -90,13 +90,8 @@ func (t *stateTransporter) RunStateTransportLoop(handler stateHandler) (err erro
 			timer := time.NewTimer(invokeAfter)
 			select {
 			case <-timer.C:
-				if !timer.Stop() {
-					<-timer.C
-				}
 			case f := <-t.detours:
-				if !timer.Stop() {
-					<-timer.C
-				}
+				timer.Stop()
 				if nil == f {
 					return nil
 				}

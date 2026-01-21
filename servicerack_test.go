@@ -2,6 +2,7 @@ package watchback
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 )
@@ -458,7 +459,8 @@ func TestServiceRack_nodeLoopStartStop(t *testing.T) {
 		t.Fatalf("cannot add node 3 to service rack: %v", err)
 	}
 	tStart := time.Now()
-	serviceRack.startNodeLoops()
+	var waitGroup sync.WaitGroup
+	serviceRack.startNodeLoops(&waitGroup)
 	if !nc1.lastClose.IsZero() {
 		t.Error("initial last close time stamp is not zero (node-1)")
 	}
@@ -493,7 +495,7 @@ func TestServiceRack_durationToNextSelfChecks(t *testing.T) {
 
 func prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t *testing.T, nodeMsgTimingCfg *NodeMessagingTimingConfig) (serviceRack *ServiceRack, nm [6]*mockNodeMessagingAdapter_C1, teardownFunc func()) {
 	serviceRack = NewServiceRack(0, 5, nil, newDefaultServiceTimingConfigForTest_3())
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		nodeId := int32(i + 1)
 		aux := newMockNodeMessagingAdapter_C1()
 		nm[i] = aux
@@ -502,8 +504,10 @@ func prepare_ServiceRack_NilServCtl_TimingCfg3_6Nodes(t *testing.T, nodeMsgTimin
 			t.Fatalf("cannot add node %v to service rack: %v", nodeId, err)
 		}
 	}
-	serviceRack.startNodeLoops()
-	go serviceRack.controlRunner.RunLoop()
+	var waitGroup sync.WaitGroup
+	serviceRack.startNodeLoops(&waitGroup)
+	waitGroup.Add(1)
+	go serviceRack.controlRunner.RunLoop(&waitGroup)
 	teardownFunc = func() {
 		serviceRack.stopNodeLoops()
 		serviceRack.controlRunner.Close()
@@ -795,6 +799,7 @@ func (m *mockServiceControlAdapter_P1) Close(ctx context.Context) (err error) {
 func (m *mockServiceControlAdapter_P1) validate_eventSequence(t *testing.T, eventSeq []int) {
 	idx := 0
 	for evnt := range m.eventCh {
+		t.Logf("have event identifier: %v", evnt)
 		if evnt != eventSeq[idx] {
 			t.Fatalf("unexpected event id: [index=%v] %v != %v", idx, evnt, eventSeq[idx])
 		}
@@ -805,10 +810,14 @@ func (m *mockServiceControlAdapter_P1) validate_eventSequence(t *testing.T, even
 	}
 }
 
-func prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t *testing.T, nodeMsgTimingCfg *NodeMessagingTimingConfig) (serviceController *mockServiceControlAdapter_P1, serviceRack *ServiceRack, nm [3]*mockNodeMessagingAdapter_P1, teardownFunc func()) {
+func (m *mockServiceControlAdapter_P1) teardown() {
+	close(m.eventCh)
+}
+
+func prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t *testing.T, nodeMsgTimingCfg *NodeMessagingTimingConfig) (serviceController *mockServiceControlAdapter_P1, serviceRack *ServiceRack, nm [3]*mockNodeMessagingAdapter_P1, waitGroupRef *sync.WaitGroup, teardownFunc func()) {
 	serviceController = newMockServiceControlAdapter_P1()
 	serviceRack = NewServiceRack(0, 2, serviceController, newDefaultServiceTimingConfigForTest_P1())
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		nodeId := int32(i + 1)
 		aux := newMockNodeMessagingAdapter_P1()
 		nm[i] = aux
@@ -817,15 +826,19 @@ func prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t *testing.T, nodeMsgTiming
 			t.Fatalf("cannot add node %v to service rack: %v", nodeId, err)
 		}
 	}
-	go serviceRack.StateTransitionLoop()
+	var waitGroup sync.WaitGroup
+	waitGroupRef = &waitGroup
+	waitGroup.Add(1)
+	go serviceRack.StateTransitionLoop(&waitGroup)
 	teardownFunc = func() {
 		serviceRack.Close()
+		serviceController.teardown()
 	}
-	return serviceController, serviceRack, nm, teardownFunc
+	return serviceController, serviceRack, nm, &waitGroup, teardownFunc
 }
 
 func TestServiceRack_StateTransitionLoop_flowNormal(t *testing.T) {
-	serviceController, serviceRack, nm, teardownFunc := prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
+	serviceController, serviceRack, nm, _, teardownFunc := prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
 	defer teardownFunc()
 	t.Run("1-prepare", func(t *testing.T) {
 		var st = []int{
@@ -884,10 +897,12 @@ func TestServiceRack_StateTransitionLoop_flowNormal(t *testing.T) {
 		}
 		serviceController.validate_eventSequence(t, st)
 	})
+	// t.Log("done, wait stop")
+	// waitGroup.Wait()
 }
 
 func TestServiceRack_StateTransitionLoop_flowTakeOver(t *testing.T) {
-	serviceController, serviceRack, nm, teardownFunc := prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
+	serviceController, serviceRack, nm, _, teardownFunc := prepare_ServiceRack_P1ServCtl_TimingCfg3_3Nodes(t, newDefaultNodeMessengingTimingConfigForTest_1())
 	defer teardownFunc()
 	t.Run("1-prepare", func(t *testing.T) {
 		var st = []int{
@@ -966,4 +981,5 @@ func TestServiceRack_StateTransitionLoop_flowTakeOver(t *testing.T) {
 			t.Fatal("expect servicing check pass.")
 		}
 	})
+	// waitGroup.Wait()
 }

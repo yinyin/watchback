@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 )
@@ -117,8 +118,10 @@ func validateCallableResult(t *testing.T, callableName string, resultCh <-chan e
 }
 
 func TestRunner_Run_normal1(t *testing.T) {
+	var waitGroup sync.WaitGroup
 	runner := newCallableBundleRunner(3)
-	go runner.RunLoop()
+	waitGroup.Add(1)
+	go runner.RunLoop(&waitGroup)
 	mock := newMockCallable1()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 	defer cancel()
@@ -128,9 +131,11 @@ func TestRunner_Run_normal1(t *testing.T) {
 	}
 	runner.Close()
 	validateCallableInvokeResult(t, "Run_normal1:mock-noop", mock.finished, ctx, retCh, false, false, false, false)
+	// waitGroup.Wait()
 }
 
 func TestRunner_Run_normal3(t *testing.T) {
+	var waitGroup sync.WaitGroup
 	runner := newCallableBundleRunner(3)
 	mock := newMockCallable1()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
@@ -154,16 +159,20 @@ func TestRunner_Run_normal3(t *testing.T) {
 	if nil != retCh4 {
 		t.Errorf("result channel of callable 4 shall not be available: %v", retCh4)
 	}
-	go runner.RunLoop()
+	waitGroup.Add(1)
+	go runner.RunLoop(&waitGroup)
 	runner.Close()
 	validateCallableInvokeResult(t, "Run_normal3:mock-noop-1", mock.finished, ctx, retCh1, false, false, false, false)
 	validateCallableInvokeResult(t, "Run_normal3:mock-noop-2", mock.finished, ctx, retCh2, false, false, false, false)
 	validateCallableInvokeResult(t, "Run_normal3:mock-noop-3", mock.finished, ctx, retCh3, false, false, false, false)
+	// waitGroup.Wait()
 }
 
 func TestRunner_Run_endless1(t *testing.T) {
+	var waitGroup sync.WaitGroup
 	runner := newCallableBundleRunner(3)
-	go runner.RunLoop()
+	waitGroup.Add(1)
+	go runner.RunLoop(&waitGroup)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 	mock1 := newMockCallable1()
@@ -195,8 +204,10 @@ func TestRunner_Run_endless1(t *testing.T) {
 }
 
 func TestRunner_Run_endless2(t *testing.T) {
+	var waitGroup sync.WaitGroup
 	runner := newCallableBundleRunner(3)
-	go runner.RunLoop()
+	waitGroup.Add(1)
+	go runner.RunLoop(&waitGroup)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 	mock1 := newMockCallable1()
@@ -219,9 +230,11 @@ func TestRunner_Run_endless2(t *testing.T) {
 	validateCallableResult(t, "Run_endless2:mock-1-noop", retCh1, within, false)
 	validateCallableResult(t, "Run_endless2:mock-2-sleep10_wo_context", retCh2, within, true)
 	validateCallableResult(t, "Run_endless2:mock-3-sleep10_w_context", retCh3, within, true)
+	// waitGroup.Wait()
 }
 
 func TestRunner_Run_timeoutOverFeed(t *testing.T) {
+	var waitGroup sync.WaitGroup
 	runner := newCallableBundleRunner(2)
 	retCh1, cancel1, err := runner.AddCallableWithTimeout(mockCallableNoop, time.Second)
 	if nil != err {
@@ -244,7 +257,8 @@ func TestRunner_Run_timeoutOverFeed(t *testing.T) {
 	if nil != cancel3 {
 		t.Errorf("cancel function of callable 3 shall not be available")
 	}
-	go runner.RunLoop()
+	waitGroup.Add(1)
+	go runner.RunLoop(&waitGroup)
 	runner.Close()
 	within := time.Second * 3
 	validateCallableResult(t, "Run_timeoutOverFeed:mock-1-noop", retCh1, within, false)
@@ -252,11 +266,14 @@ func TestRunner_Run_timeoutOverFeed(t *testing.T) {
 	if nil != retCh3 {
 		validateCallableResult(t, "Run_timeoutOverFeed:mock-3-noop", retCh3, within, false)
 	}
+	// waitGroup.Wait()
 }
 
 func TestRunner_Run_timeout2(t *testing.T) {
+	var waitGroup sync.WaitGroup
 	runner := newCallableBundleRunner(3)
-	go runner.RunLoop()
+	waitGroup.Add(1)
+	go runner.RunLoop(&waitGroup)
 	mock1 := newMockCallable1()
 	retCh1, cancel1, err := runner.AddCallableWithTimeout(mock1.noop, time.Second)
 	if nil != err {
@@ -280,4 +297,5 @@ func TestRunner_Run_timeout2(t *testing.T) {
 	validateCallableResult(t, "Run_timeout2:mock-1-noop", retCh1, within, false)
 	validateCallableResult(t, "Run_timeout2:mock-2-sleep10_wo_context", retCh2, within, true)
 	validateCallableResult(t, "Run_timeout2:mock-3-sleep10_w_context", retCh3, within, true)
+	// waitGroup.Wait()
 }

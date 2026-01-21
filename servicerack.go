@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
-
+	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var ErrNoFrontNodeInService = errors.New("none of front nodes in service")
@@ -182,9 +182,10 @@ func (x *ServiceRack) AddNode(nodeId int32, messenger NodeMessagingAdapter, mess
 	return workerNode, nil
 }
 
-func (x *ServiceRack) startNodeLoops() {
+func (x *ServiceRack) startNodeLoops(waitGroup *sync.WaitGroup) {
 	for _, node := range x.allNodes {
-		go node.RunMessagingLoop()
+		waitGroup.Add(1)
+		go node.RunMessagingLoop(waitGroup)
 	}
 }
 
@@ -516,10 +517,12 @@ func (x *ServiceRack) Close() (err error) {
 	return err
 }
 
-func (x *ServiceRack) StateTransitionLoop() (err error) {
-	x.startNodeLoops()
+func (x *ServiceRack) StateTransitionLoop(waitGroup *sync.WaitGroup) (err error) {
+	defer waitGroup.Done()
+	x.startNodeLoops(waitGroup)
 	defer x.stopNodeLoops()
-	go x.controlRunner.RunLoop()
+	waitGroup.Add(1)
+	go x.controlRunner.RunLoop(waitGroup)
 	defer x.controlRunner.Close()
 	if err = x.runPrepare(); nil != err {
 		return err

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -61,6 +62,7 @@ func (r callableBundleRunner) runCallable(remainRunnerCount *atomic.Int32, ch ch
 	err := bundle.callable(bundle.ctx)
 	ch <- err
 	close(ch)
+	// log.Printf("INFO: bundle complete, remainRunnerCount: %d.", remainRunnerCount.Load())
 }
 
 func (r callableBundleRunner) AddCallableWithContext(callable callableFunc, ctx context.Context) (retCh <-chan error, err error) {
@@ -86,7 +88,8 @@ func (r callableBundleRunner) Close() {
 	close(r)
 }
 
-func (r callableBundleRunner) RunLoop() {
+func (r callableBundleRunner) RunLoop(waitGroup *sync.WaitGroup) {
+	defer waitGroup.Done()
 	var remainRunnerCount atomic.Int32
 	remainRunnerCount.Store(32)
 	for bundle := range r {
@@ -107,6 +110,7 @@ func (r callableBundleRunner) RunLoop() {
 			case err, ok := <-ch:
 				bundle.setErrorState(err, ok)
 			case <-time.After(ExpiredCallableResultCollectPeriod):
+				log.Printf("WARN: bundle not stop on time: %#v.", bundle)
 				bundle.setErrorState(ErrCallableTimeout, true)
 			}
 		}
